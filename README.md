@@ -309,4 +309,4 @@ Quantamn-Safe/
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+Proprietary — all rights reserved. See [LICENSE](LICENSE).
