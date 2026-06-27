@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QuantumSafe — Sign In</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%2300FF88'/></svg>" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="auth-shell">
+    <div class="auth-card">
+      <div class="brand" style="margin-bottom:20px;"><span class="dot"></span> QuantumSafe</div>
+
+      <div id="msg" class="msg"></div>
+
+      <!-- LOGIN -->
+      <form id="form-login" class="auth-form">
+        <h1>Sign in</h1>
+        <p class="sub">Access your quantum risk dashboard.</p>
+        <div class="field"><label>Email</label><input type="email" name="email" autocomplete="email" required /></div>
+        <div class="field"><label>Password</label><input type="password" name="password" autocomplete="current-password" required /></div>
+        <button class="btn btn-primary btn-block" type="submit">Sign In</button>
+        <div class="auth-switch"><a href="#" data-go="forgot">Forgot password?</a></div>
+        <div class="auth-switch">No account? <a href="#" data-go="register">Create one</a></div>
+      </form>
+
+      <!-- REGISTER -->
+      <form id="form-register" class="auth-form hidden">
+        <h1>Create account</h1>
+        <p class="sub">Free to start. Upgrade to Pro for the dashboard.</p>
+        <div class="field"><label>Email</label><input type="email" name="email" autocomplete="email" required /></div>
+        <div class="field"><label>Password (min 8 chars)</label><input type="password" name="password" autocomplete="new-password" minlength="8" required /></div>
+        <button class="btn btn-primary btn-block" type="submit">Create Account</button>
+        <div class="auth-switch">Already have an account? <a href="#" data-go="login">Sign in</a></div>
+      </form>
+
+      <!-- FORGOT -->
+      <form id="form-forgot" class="auth-form hidden">
+        <h1>Reset password</h1>
+        <p class="sub">We'll email you a reset link.</p>
+        <div class="field"><label>Email</label><input type="email" name="email" autocomplete="email" required /></div>
+        <button class="btn btn-primary btn-block" type="submit">Send Reset Link</button>
+        <div class="auth-switch"><a href="#" data-go="login">Back to sign in</a></div>
+      </form>
+
+      <!-- RESET (shown when ?reset=token present) -->
+      <form id="form-reset" class="auth-form hidden">
+        <h1>Set a new password</h1>
+        <p class="sub">Choose a new password for your account.</p>
+        <div class="field"><label>New password (min 8 chars)</label><input type="password" name="password" minlength="8" required /></div>
+        <button class="btn btn-primary btn-block" type="submit">Update Password</button>
+        <div class="auth-switch"><a href="#" data-go="login">Back to sign in</a></div>
+      </form>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

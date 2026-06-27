@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QuantumSafe — Migration Plan</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%2300FF88'/></svg>" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><span class="dot"></span> QuantumSafe</div>
+      <nav id="side-nav">
+        <a href="dashboard.html#overview">Overview</a>
+        <a href="dashboard.html#scans">Scans</a>
+        <a href="dashboard.html#findings">Findings</a>
+        <a href="migration.html" class="active">Migration Plan</a>
+        <a href="dashboard.html#settings">Settings</a>
+        <a href="dashboard.html#billing">Billing</a>
+      </nav>
+      <div class="side-foot">
+        <a class="btn btn-block btn-sm" href="dashboard.html#scans">← Back to Scans</a>
+        <button class="btn btn-block btn-sm" id="btn-logout" style="margin-top:8px;">Log out</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div id="global-msg" class="msg"></div>
+      <div class="page-head">
+        <h1>Migration Plan</h1>
+        <span class="muted mono" id="mig-meta"></span>
+      </div>
+
+      <div class="card" style="margin-bottom:18px;">
+        <h3>Roadmap</h3>
+        <p class="muted" style="font-size:14px;">
+          Prioritize HIGH-risk items first (broken by Shor's algorithm), then MEDIUM (deprecated /
+          Grover-weakened), then monitor LOW. Each item maps to a NIST PQC standard.
+        </p>
+      </div>
+
+      <div id="mig-container"></div>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

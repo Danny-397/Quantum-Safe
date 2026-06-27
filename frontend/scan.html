@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QuantumSafe — Scan Detail</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%2300FF88'/></svg>" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><span class="dot"></span> QuantumSafe</div>
+      <nav id="side-nav">
+        <a href="dashboard.html#overview">Overview</a>
+        <a href="dashboard.html#scans" class="active">Scans</a>
+        <a href="dashboard.html#findings">Findings</a>
+        <a href="migration.html">Migration Plan</a>
+        <a href="dashboard.html#settings">Settings</a>
+        <a href="dashboard.html#billing">Billing</a>
+      </nav>
+      <div class="side-foot">
+        <a class="btn btn-block btn-sm" href="dashboard.html#scans">← Back to Scans</a>
+        <button class="btn btn-block btn-sm" id="btn-logout" style="margin-top:8px;">Log out</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div id="global-msg" class="msg"></div>
+      <div class="page-head">
+        <h1>Scan Detail</h1>
+        <div class="toolbar" style="margin:0;">
+          <button class="btn btn-sm" data-export="json">Export JSON</button>
+          <button class="btn btn-sm" data-export="html">Export HTML</button>
+          <button class="btn btn-sm" data-export="csv">Export CSV</button>
+        </div>
+      </div>
+
+      <div class="grid grid-4">
+        <div class="card score-card"><h3>Risk Score</h3>
+          <div class="score-big mono" id="sd-score">—</div>
+          <div class="score-band" id="sd-band"></div>
+        </div>
+        <div class="card"><h3>Target</h3><div class="mono" id="sd-target" style="word-break:break-all;font-size:13px;"></div></div>
+        <div class="card"><h3>Date</h3><div class="mono" id="sd-date" style="font-size:14px;"></div></div>
+        <div class="card"><h3>Findings</h3>
+          <div class="pill-row" style="margin-top:8px;">
+            <span class="high">HIGH <b id="sd-high">0</b></span>
+            <span class="medium">MED <b id="sd-med">0</b></span>
+            <span class="low">LOW <b id="sd-low">0</b></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="toolbar">
+          <label class="muted" style="font-size:13px;">Filter risk</label>
+          <select id="sd-filter">
+            <option value="all">All</option><option value="HIGH">High</option>
+            <option value="MEDIUM">Medium</option><option value="LOW">Low</option>
+          </select>
+          <div class="spacer"></div>
+          <a class="btn btn-sm" id="sd-migration-link">View Migration Plan →</a>
+        </div>
+        <table class="tbl"><thead><tr>
+          <th>File</th><th>Line</th><th>Algorithm</th><th>Risk</th><th>Recommendation</th>
+        </tr></thead><tbody id="sd-body"></tbody></table>
+      </div>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QuantumSafe — Find Your Quantum Vulnerabilities Before Attackers Do</title>
+<meta name="description" content="QuantumSafe scans your codebase, scores quantum risk, and generates a NIST-aligned migration plan. Free CLI. No credit card required." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%2300FF88'/></svg>" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="nav">
+    <div class="brand"><span class="dot"></span> QuantumSafe</div>
+    <nav class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <a href="login.html">Sign In</a>
+      <a href="login.html?mode=register" class="btn btn-sm btn-primary">Sign Up</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero wrap">
+      <h1>Find Your Quantum Vulnerabilities <span class="grn">Before Attackers Do.</span></h1>
+      <p class="sub">QuantumSafe scans your codebase, scores quantum risk, and generates a
+        NIST-aligned migration plan. Free CLI. No credit card required.</p>
+      <div class="cta">
+        <a href="#install" class="btn btn-primary">Install Free CLI</a>
+        <a href="login.html?mode=register" class="btn">Sign Up for Dashboard</a>
+      </div>
+      <div class="code" id="install"><span class="prompt">$</span> pip install quantumsafe
+<span class="prompt">$</span> quantumsafe scan --path ./myproject</div>
+    </section>
+
+    <section class="section wrap" id="features">
+      <h2>Quantum risk, end to end.</h2>
+      <p class="lead">Detect. Score. Migrate. One workflow from your terminal to your dashboard.</p>
+      <div class="pillars">
+        <div class="pillar">
+          <h3><span class="tag">01</span> Scan</h3>
+          <p>Detect RSA, ECC, and weak cryptography across your entire codebase in seconds —
+             Python, JavaScript, Java, Go and Ruby.</p>
+        </div>
+        <div class="pillar">
+          <h3><span class="tag">02</span> Score</h3>
+          <p>Get a Quantum Risk Score for every asset and your organization overall, with
+             severity-weighted findings.</p>
+        </div>
+        <div class="pillar">
+          <h3><span class="tag">03</span> Migrate</h3>
+          <p>Receive NIST-approved recommendations — Kyber, Dilithium, SHA-3, AES-256 — for
+             every vulnerability found.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section wrap" id="pricing">
+      <h2>Pricing</h2>
+      <p class="lead">Start free. Upgrade when you need the dashboard.</p>
+      <div class="pricing">
+        <div class="plan">
+          <h3>Free</h3>
+          <div class="price">$0</div>
+          <ul>
+            <li>CLI scanner</li>
+            <li>3 scans per month</li>
+            <li>Terminal output only</li>
+            <li>No dashboard access</li>
+          </ul>
+          <a href="#install" class="btn btn-block">Install CLI</a>
+        </div>
+        <div class="plan featured">
+          <h3>Pro</h3>
+          <div class="price">$19<span>/month</span></div>
+          <ul>
+            <li>Unlimited scans</li>
+            <li>Full web dashboard</li>
+            <li>JSON and HTML reports</li>
+            <li>Scan history</li>
+            <li>API access</li>
+            <li>Email alerts</li>
+          </ul>
+          <a href="login.html?mode=register&plan=pro" class="btn btn-primary btn-block">Start Pro</a>
+        </div>
+        <div class="plan">
+          <h3>Team</h3>
+          <div class="price">$49<span>/month</span></div>
+          <ul>
+            <li>Everything in Pro</li>
+            <li>5 team members</li>
+            <li>Scheduled scans</li>
+            <li>Priority support</li>
+            <li>CSV export</li>
+          </ul>
+          <a href="login.html?mode=register&plan=team" class="btn btn-block">Start Team</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section wrap">
+      <div class="trust">Based on NIST Post-Quantum Cryptography Standards (FIPS 203, 204, 205)</div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    QuantumSafe — a security tool for awareness, not a substitute for a professional cryptographic audit.
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

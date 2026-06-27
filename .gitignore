@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+
+# Virtual envs
+venv/
+.venv/
+env/
+
+# Env / secrets
+.env
+*.local
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+instance/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Scratch / reports
+_scratch/
+report.json
+report.html
+*.log

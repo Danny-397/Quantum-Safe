@@ -1,0 +1,52 @@
+# Render Blueprint — one-click deploy of the QuantumSafe API + database.
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: quantumsafe-api
+    runtime: python
+    plan: free
+    # Install the shared scanner package (repo root) AND the backend deps.
+    buildCommand: "pip install -e . && pip install -r backend/requirements.txt"
+    startCommand: "cd backend && gunicorn app:app --bind 0.0.0.0:$PORT"
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: quantumsafe-db
+          property: connectionString
+      - key: FRONTEND_ORIGIN
+        sync: false        # set to your Vercel dashboard URL
+      - key: DASHBOARD_URL
+        sync: false
+      - key: API_URL
+        sync: false        # set to this service's public URL
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRO_PRICE_ID
+        sync: false
+      - key: STRIPE_TEAM_PRICE_ID
+        sync: false
+      - key: MAIL_SERVER
+        sync: false
+      - key: MAIL_PORT
+        value: "587"
+      - key: MAIL_USE_TLS
+        value: "true"
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_DEFAULT_SENDER
+        sync: false
+
+databases:
+  - name: quantumsafe-db
+    plan: free
+    databaseName: quantumsafe

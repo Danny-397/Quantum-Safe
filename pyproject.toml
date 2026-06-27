@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quantumsafe"
+version = "0.1.0"
+description = "Scan codebases for quantum-vulnerable cryptography and generate a NIST-aligned migration plan."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "QuantumSafe" }]
+keywords = ["quantum", "cryptography", "pqc", "nist", "security", "kyber", "dilithium"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Security :: Cryptography",
+]
+dependencies = [
+    "rich>=13.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Danny-397/Quantamn-Safe"
+
+[project.scripts]
+quantumsafe = "quantumsafe.cli:main"
+
+# The source lives in cli/ (per the project layout) but installs/imports as the
+# `quantumsafe` package.
+[tool.setuptools]
+package-dir = { "quantumsafe" = "cli" }
+packages = ["quantumsafe"]

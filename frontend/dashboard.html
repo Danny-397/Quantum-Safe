@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QuantumSafe — Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%2300FF88'/></svg>" />
+<link rel="stylesheet" href="style.css" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><span class="dot"></span> QuantumSafe</div>
+      <nav id="side-nav">
+        <a href="#overview" data-view="overview">Overview</a>
+        <a href="#scans" data-view="scans">Scans</a>
+        <a href="#findings" data-view="findings">Findings</a>
+        <a href="migration.html" data-view="migration">Migration Plan</a>
+        <a href="#settings" data-view="settings">Settings</a>
+        <a href="#billing" data-view="billing">Billing</a>
+      </nav>
+      <div class="side-foot">
+        <button class="btn btn-block btn-primary" id="btn-new-scan">+ New Scan</button>
+        <button class="btn btn-block btn-sm" id="btn-logout" style="margin-top:8px;">Log out</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div id="global-msg" class="msg"></div>
+
+      <!-- OVERVIEW -->
+      <section class="view" id="view-overview">
+        <div class="page-head"><h1>Overview</h1><span class="muted mono" id="ov-plan"></span></div>
+        <div class="grid grid-4">
+          <div class="card score-card">
+            <h3>Quantum Risk Score</h3>
+            <div class="score-big mono" id="ov-score">—</div>
+            <div class="score-band" id="ov-band"></div>
+          </div>
+          <div class="card"><h3>Total Scans</h3><div class="stat" id="ov-total">—</div></div>
+          <div class="card"><h3>Findings</h3>
+            <div class="pill-row" style="margin-top:8px;">
+              <span class="high">HIGH <b id="ov-high">0</b></span>
+              <span class="medium">MED <b id="ov-med">0</b></span>
+              <span class="low">LOW <b id="ov-low">0</b></span>
+            </div>
+          </div>
+          <div class="card"><h3>Scans This Month</h3><div class="stat sm" id="ov-month">—</div></div>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
+          <h3>Risk Trend</h3>
+          <canvas id="trend-chart" height="90"></canvas>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
+          <h3>Recent Scans</h3>
+          <table class="tbl"><thead><tr>
+            <th>Target</th><th>Date</th><th>Score</th><th>H/M/L</th><th></th>
+          </tr></thead><tbody id="ov-recent"></tbody></table>
+        </div>
+      </section>
+
+      <!-- SCANS -->
+      <section class="view hidden" id="view-scans">
+        <div class="page-head"><h1>Scans</h1><button class="btn btn-primary" id="btn-new-scan-2">+ New Scan</button></div>
+        <table class="tbl"><thead><tr>
+          <th>Target</th><th>Date</th><th>Score</th><th>Findings</th><th></th>
+        </tr></thead><tbody id="scans-body"></tbody></table>
+        <div class="toolbar" style="margin-top:14px;">
+          <button class="btn btn-sm" id="scans-prev">Prev</button>
+          <span class="muted mono" id="scans-page"></span>
+          <button class="btn btn-sm" id="scans-next">Next</button>
+        </div>
+      </section>
+
+      <!-- FINDINGS (latest scan) -->
+      <section class="view hidden" id="view-findings">
+        <div class="page-head"><h1>Findings <span class="muted" style="font-size:15px;">— latest scan</span></h1></div>
+        <div class="toolbar">
+          <label class="muted" style="font-size:13px;">Risk</label>
+          <select id="find-filter">
+            <option value="all">All</option><option value="HIGH">High</option>
+            <option value="MEDIUM">Medium</option><option value="LOW">Low</option>
+          </select>
+          <div class="spacer"></div>
+          <a class="btn btn-sm" id="find-detail-link">Open full detail →</a>
+        </div>
+        <table class="tbl"><thead><tr>
+          <th>File</th><th>Line</th><th>Algorithm</th><th>Risk</th><th>Recommendation</th>
+        </tr></thead><tbody id="findings-body"></tbody></table>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="view hidden" id="view-settings">
+        <div class="page-head"><h1>Settings</h1></div>
+        <div class="card">
+          <h3>CLI API Key</h3>
+          <p class="muted" style="font-size:14px;margin-bottom:12px;">
+            Use this key to link the CLI to your account: <span class="mono">quantumsafe auth --key &lt;key&gt;</span>
+          </p>
+          <div class="code" id="apikey-display" style="margin-bottom:12px;">No key generated yet.</div>
+          <button class="btn" id="btn-gen-key">Generate / Regenerate Key</button>
+          <p class="muted" style="font-size:12.5px;margin-top:8px;">The full key is shown only once.</p>
+        </div>
+        <div class="card" style="margin-top:16px;">
+          <h3>Account</h3>
+          <div class="mono" id="acct-email"></div>
+          <div class="muted mono" id="acct-created" style="font-size:13px;"></div>
+          <div class="mono" id="acct-verified" style="margin-top:6px;"></div>
+        </div>
+        <div class="card" style="margin-top:16px;">
+          <h3>Email Preferences</h3>
+          <label style="display:flex;align-items:center;gap:10px;font-size:14px;">
+            <input type="checkbox" id="pref-alerts" checked /> Email me when a scan finds HIGH-risk vulnerabilities
+          </label>
+          <p class="muted" style="font-size:12.5px;margin-top:6px;">Saved locally to your browser in this build.</p>
+        </div>
+      </section>
+
+      <!-- BILLING -->
+      <section class="view hidden" id="view-billing">
+        <div class="page-head"><h1>Billing</h1></div>
+        <div class="card">
+          <h3>Current Plan</h3>
+          <div class="stat sm mono" id="bill-plan">—</div>
+        </div>
+        <div class="grid grid-2" style="margin-top:16px;">
+          <div class="card">
+            <h3>Pro — $19/mo</h3>
+            <p class="muted" style="font-size:14px;">Unlimited scans, dashboard, reports, API, email alerts.</p>
+            <button class="btn btn-primary" data-upgrade="pro" style="margin-top:10px;">Upgrade to Pro</button>
+          </div>
+          <div class="card">
+            <h3>Team — $49/mo</h3>
+            <p class="muted" style="font-size:14px;">Everything in Pro, 5 members, scheduled scans, CSV export.</p>
+            <button class="btn btn-primary" data-upgrade="team" style="margin-top:10px;">Upgrade to Team</button>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px;">
+          <h3>Manage Subscription</h3>
+          <p class="muted" style="font-size:14px;margin-bottom:10px;">Update payment method, view invoices, or cancel.</p>
+          <button class="btn" id="btn-portal">Open Customer Portal</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- New scan modal -->
+  <div id="scan-modal" class="auth-shell hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:50;">
+    <div class="auth-card">
+      <h1>New Scan</h1>
+      <p class="sub">Scan a public GitHub repo or upload a .zip of your codebase.</p>
+      <div id="scan-msg" class="msg"></div>
+      <div class="field"><label>GitHub repository URL</label>
+        <input type="url" id="scan-repo" placeholder="https://github.com/org/app" /></div>
+      <div class="field"><label>…or upload a .zip</label>
+        <input type="file" id="scan-file" accept=".zip" /></div>
+      <button class="btn btn-primary btn-block" id="btn-run-scan">Run Scan</button>
+      <div class="auth-switch"><a href="#" id="scan-cancel">Cancel</a></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
