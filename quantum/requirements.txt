@@ -1,0 +1,4 @@
+# Quantum module dependencies (separate from the lightweight CLI on purpose).
+# Install with: pip install -r quantum/requirements.txt
+qiskit>=1.0
+qiskit-aer>=0.14

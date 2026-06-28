@@ -95,6 +95,33 @@ reference, and an estimated migration complexity:
 
 ---
 
+## 2b. Quantum module — implementing the attacks (`quantum/`)
+
+The scanner's risk ratings are not asserted on faith; the `quantum/` module runs
+the actual quantum algorithms that justify them, on a Qiskit simulator.
+
+- **`shor.py` (why RSA/ECC = HIGH).** Implements quantum **order-finding**: a
+  counting register in superposition, controlled modular-exponentiation
+  (`a^(2^j) mod N`), and an inverse QFT — i.e. quantum phase estimation. Measuring
+  gives `s/r`; continued fractions recover the order `r`; then
+  `gcd(a^(r/2) ± 1, N)` yields the factors. The code factors `N=15`, then uses
+  the factors to compute `φ(N)` and the RSA private exponent `d = e⁻¹ mod φ(N)`
+  and decrypts a ciphertext — a complete, runnable RSA break.
+- **`grover.py` (why AES/SHA = LOW).** Implements amplitude amplification
+  (oracle reflection + diffuser, `≈(π/4)√N` iterations) to recover a hidden
+  `k`-bit key in ~`√(2^k)` queries, demonstrating the quadratic speedup that
+  halves effective key length.
+
+**Engineering choice:** Qiskit is a heavy dependency, so the quantum module is
+kept *out* of the lightweight CLI package and CI; it has its own
+`quantum/requirements.txt`, and its tests `importorskip` Qiskit so the core suite
+stays fast.
+
+**Honest scope:** this is genuine quantum computation at the scale anyone can run
+Shor end-to-end today. It is not a claim to factor RSA-2048 — that needs
+fault-tolerant hardware that does not exist. The point is to demonstrate the real
+mechanism, which is exactly what makes the migration case credible.
+
 ## 3. Architecture
 
 ```

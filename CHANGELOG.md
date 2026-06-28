@@ -6,6 +6,9 @@ All notable changes to QuantumSafe are documented here. This project follows
 ## [Unreleased]
 
 ### Added
+- **Quantum module (`quantum/`):** real Qiskit implementations of Shor's
+  algorithm (quantum order-finding factors N and recovers an RSA key) and
+  Grover's algorithm (key-search speedup), run on a quantum simulator.
 - **Detection engine:** AST (Python) + regex scanning across Python, JavaScript/
   TypeScript, Java, Go, Ruby, C#, PHP, Rust, C/C++, Kotlin, and Swift.
 - **Output formats:** terminal, JSON, standalone HTML, **SARIF 2.1.0**,

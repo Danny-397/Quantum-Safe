@@ -6,9 +6,16 @@
 
 **Find your quantum vulnerabilities before attackers do.**
 
-QuantumSafe scans codebases for cryptographic algorithms that will be broken or
-weakened by quantum computers, scores the overall quantum risk, and generates a
-NIST-aligned migration plan recommending post-quantum alternatives.
+QuantumSafe is a post-quantum security platform with two halves that reinforce
+each other:
+
+1. A **static-analysis engine** that scans codebases for cryptography that will
+   be broken or weakened by quantum computers, scores the risk, and generates a
+   NIST-aligned migration plan.
+2. A **quantum-computing module** ([`quantum/`](quantum/)) that *implements the
+   actual attacks* — **Shor's** and **Grover's** algorithms in Qiskit, run on a
+   quantum simulator — so every risk rating is backed by the real algorithm that
+   justifies it. The scanner says *what* to fix; the quantum module proves *why*.
 
 It ships as three parts that share **one** detection engine:
 
@@ -31,6 +38,10 @@ It ships as three parts that share **one** detection engine:
 QuantumSafe is a full, working product built end to end — not a tutorial clone.
 It was built to show breadth and depth across the stack:
 
+- **Quantum computing:** real implementations of **Shor's algorithm** (quantum
+  order-finding + phase estimation, which factors a number and recovers an RSA
+  key) and **Grover's algorithm** in **Qiskit**, run on a quantum simulator —
+  see [`quantum/`](quantum/). Not described — executed.
 - **Program analysis:** a real detection engine using Python's `ast` module
   (import + call resolution) alongside a multi-language regex engine, with
   per-line/per-family de-duplication so findings don't double-count.
@@ -100,6 +111,28 @@ score = min(100, 15*HIGH + 5*MEDIUM + 1*LOW)
 | 81–100 | Critical | Immediate action required |
 
 ---
+
+## Quantum demonstrations (Shor & Grover)
+
+The [`quantum/`](quantum/) module runs the real algorithms on a quantum simulator:
+
+```bash
+pip install -r quantum/requirements.txt
+python quantum/shor.py     # quantum order-finding factors N=15, then breaks a toy RSA key
+python quantum/grover.py   # recovers a hidden k-bit key in ~sqrt(2^k) steps
+```
+
+- **`shor.py`** uses quantum phase estimation over modular exponentiation to find
+  the order of `a mod N`, factors `N`, and reconstructs an RSA private key from
+  the factors — the concrete reason RSA/ECC are rated **HIGH**.
+- **`grover.py`** uses amplitude amplification to search a key space in ~√N
+  queries, halving effective key strength — the reason AES-128/SHA-256 are **LOW**
+  (keep the primitive, double the size).
+
+Honest scope: these run at small scale (factoring 15), which is the genuine state
+of the art for end-to-end Shor — RSA-2048 needs millions of error-corrected
+qubits that don't exist yet. That gap is exactly why migrating *now* matters. See
+[quantum/README.md](quantum/README.md) for the math and the real-hardware path.
 
 ## CLI: install & usage
 
@@ -356,6 +389,10 @@ See **[DEPLOYMENT.md](DEPLOYMENT.md)** for a full step-by-step walkthrough
 
 ```
 Quantamn-Safe/
+├── quantum/              # REAL quantum computing (Qiskit): the attacks themselves
+│   ├── shor.py           #   Shor's algorithm — factors N, breaks RSA
+│   ├── grover.py         #   Grover's algorithm — key-search speedup
+│   └── README.md         #   the math + honest scope + real-hardware path
 ├── cli/                  # the `quantumsafe` package (CLI + shared engine)
 │   ├── scanner.py        #   AST + regex detection
 │   ├── scorer.py         #   risk score
