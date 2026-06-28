@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#0A0A0F"/>
+  <rect x="0" y="0" width="1200" height="6" fill="#00FF88"/>
+  <g font-family="-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+    <text x="80" y="150" fill="#00FF88" font-size="30" font-weight="700" letter-spacing="2">QUANTUMSAFE</text>
+    <text x="80" y="270" fill="#E0E0E0" font-size="68" font-weight="800">Find your quantum</text>
+    <text x="80" y="345" fill="#E0E0E0" font-size="68" font-weight="800">vulnerabilities first.</text>
+    <text x="80" y="430" fill="#9a9aae" font-size="30">Scan code · score quantum risk · NIST-aligned migration plan</text>
+    <text x="80" y="540" fill="#7a7a8c" font-size="24" font-family="ui-monospace, Consolas, monospace">$ pip install quantumsafe</text>
+  </g>
+  <g transform="translate(940,250)">
+    <circle cx="0" cy="0" r="140" fill="none" stroke="#1c1c26" stroke-width="18"/>
+    <circle cx="0" cy="0" r="140" fill="none" stroke="#FF4444" stroke-width="18"
+            stroke-dasharray="700 879" stroke-linecap="round" transform="rotate(-90)"/>
+    <text x="0" y="-6" fill="#FF4444" font-size="72" font-weight="800" text-anchor="middle"
+          font-family="ui-monospace, Consolas, monospace">82</text>
+    <text x="0" y="40" fill="#9a9aae" font-size="24" text-anchor="middle">RISK</text>
+  </g>
+</svg>

@@ -1,0 +1,16 @@
+# Use QuantumSafe as a pre-commit hook in any repo:
+#
+#   # .pre-commit-config.yaml
+#   repos:
+#     - repo: https://github.com/Danny-397/Quantamn-Safe
+#       rev: main
+#       hooks:
+#         - id: quantumsafe
+#
+- id: quantumsafe
+  name: QuantumSafe quantum-crypto scan
+  description: Scan for quantum-vulnerable cryptography and fail on HIGH-risk findings.
+  entry: quantumsafe scan --fail-on-high --path .
+  language: python
+  pass_filenames: false
+  always_run: true

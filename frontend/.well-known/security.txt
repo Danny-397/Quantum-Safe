@@ -1,0 +1,6 @@
+# QuantumSafe security contact (RFC 9116)
+Contact: mailto:[security@YOUR-DOMAIN]
+Expires: 2027-06-27T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://[YOUR-DOMAIN]/.well-known/security.txt
+Policy: https://[YOUR-DOMAIN]/terms.html

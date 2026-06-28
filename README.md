@@ -67,8 +67,8 @@ quantum-threat background, and an honest list of limitations.
 
 ## What it detects
 
-Across **Python, JavaScript/TypeScript, Java, Go, and Ruby** (Python also via
-AST for precision):
+Across **Python, JavaScript/TypeScript, Java, Go, Ruby, C#, PHP, Rust, C/C++,
+Kotlin, and Swift** (Python also via AST for precision):
 
 | Risk | Algorithms |
 |------|------------|
@@ -282,8 +282,17 @@ cd ../frontend
 python -m http.server 3000    # http://localhost:3000
 ```
 
-Run the test suite (39 tests — scanner, scorer, recommender, full API; uses an
-in-memory DB, no setup):
+### Run the whole stack with Docker
+
+```bash
+docker compose up --build
+# Dashboard -> http://localhost:3000   API -> http://localhost:5000
+```
+
+### Tests
+
+Run the test suite (scanner, scorer, recommender, full API; uses an in-memory
+DB, no setup):
 
 ```bash
 pip install -r requirements-dev.txt

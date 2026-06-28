@@ -40,6 +40,17 @@ def test_detects_across_languages(tmp_path):
     assert {"rsa", "sha1", "ecc", "md5"} <= families
 
 
+def test_detects_extended_languages(tmp_path):
+    _write(tmp_path, "a.cs", "var rsa = new RSACryptoServiceProvider(2048);\nvar md5 = MD5.Create();\n")
+    _write(tmp_path, "b.php", "<?php $k = openssl_pkey_new(); $h = md5($data); ?>\n")
+    _write(tmp_path, "c.rs", "use rsa::RsaPrivateKey;\nlet d = Sha1::new();\n")
+    _write(tmp_path, "d.swift", "let digest = Insecure.MD5.hash(data: data)\n")
+    families = {f.family for f in scan_path(str(tmp_path))}
+    assert "rsa" in families
+    assert "md5" in families
+    assert "sha1" in families
+
+
 def test_deduplicates_per_line_and_family(tmp_path):
     # This line matches the generic RSA rule, the RSA-2048 rule, AND the AST rule.
     _write(tmp_path, "c.py",

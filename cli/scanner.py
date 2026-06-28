@@ -109,7 +109,7 @@ RULES: list[Rule] = [
        r"\brsa[\s_\-]?4096\b|\b4096\b\s*(?:bit)?\s*rsa\b"),
     _r("rsa", "RSA", RISK_HIGH,
        "RSA public-key cryptography is broken by Shor's algorithm.",
-       r"\bRSA\b|generate_private_key.*rsa|crypto\.generateKeyPair(?:Sync)?\(\s*['\"]rsa['\"]|rsa\.GenerateKey|OpenSSL::PKey::RSA"),
+       r"\bRSA\b|generate_private_key.*rsa|crypto\.generateKeyPair(?:Sync)?\(\s*['\"]rsa['\"]|rsa\.GenerateKey|OpenSSL::PKey::RSA|RSACryptoServiceProvider|openssl_pkey_new|RsaKeyParameters"),
     _r("ecc", "ECDSA", RISK_HIGH,
        "ECDSA signatures are broken by Shor's algorithm.",
        r"\bECDSA\b|ecdsa\b"),
@@ -127,10 +127,10 @@ RULES: list[Rule] = [
        r"\bDiffie[\s\-]?Hellman\b|\bDH\b|dh\.generate_parameters|DHParameterSpec|crypto/dh"),
     _r("md5", "MD5", RISK_HIGH,
        "MD5 is collision-broken and weakened by Grover's algorithm.",
-       r"\bMD5\b|hashlib\.md5|md5\(|crypto\.createHash\(\s*['\"]md5['\"]|MessageDigest\.getInstance\(\s*['\"]MD5['\"]|Digest::MD5"),
+       r"\bMD5\b|hashlib\.md5|md5\(|md5_file|crypto\.createHash\(\s*['\"]md5['\"]|MessageDigest\.getInstance\(\s*['\"]MD5['\"]|Digest::MD5"),
     _r("sha1", "SHA-1", RISK_HIGH,
        "SHA-1 is collision-broken and weakened by Grover's algorithm.",
-       r"\bSHA[\s\-_]?1\b|hashlib\.sha1|sha1\(|crypto\.createHash\(\s*['\"]sha1['\"]|MessageDigest\.getInstance\(\s*['\"]SHA-?1['\"]|Digest::SHA1"),
+       r"\bSHA[\s\-_]?1\b|hashlib\.sha1|sha1\(|sha1_file|crypto\.createHash\(\s*['\"]sha1['\"]|MessageDigest\.getInstance\(\s*['\"]SHA-?1['\"]|Digest::SHA1"),
 
     # ---- MEDIUM ----
     _r("tls_old", "TLS 1.0", RISK_MEDIUM,
@@ -175,6 +175,18 @@ EXT_TO_LANG = {
     ".java": "java",
     ".go": "go",
     ".rb": "ruby",
+    ".cs": "csharp",
+    ".php": "php",
+    ".rs": "rust",
+    ".c": "c",
+    ".h": "c",
+    ".cpp": "cpp",
+    ".cc": "cpp",
+    ".cxx": "cpp",
+    ".hpp": "cpp",
+    ".kt": "kotlin",
+    ".kts": "kotlin",
+    ".swift": "swift",
 }
 
 _SKIP_DIRS = {
