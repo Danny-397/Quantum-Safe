@@ -608,18 +608,52 @@
   function renderFindings() {
     const lvl = $("#find-filter").value;
     const rows = findingsCache.filter((f) => lvl === "all" || f.risk_level === lvl);
-    $("#findings-body").innerHTML = rows.length
+    const tb = $("#findings-body");
+    tb.innerHTML = rows.length
       ? rows.map(findingRow).join("")
       : `<tr><td colspan="5" class="empty">No findings at this level.</td></tr>`;
+    wireFindingToggle(tb);
   }
-  function findingRow(f) {
-    return `<tr>
+  function findingRow(f, i) {
+    const rid = "find-" + i;
+    const meta = [f.nist_reference, f.complexity ? "Complexity: " + f.complexity : ""]
+      .filter(Boolean).map(esc).join('<span class="sep">·</span>');
+    return `<tr class="finding-row" data-target="${rid}" tabindex="0" role="button" aria-expanded="false" aria-controls="${rid}">
       <td class="mono">${esc(f.file_path)}</td>
       <td class="num">${f.line_number}</td>
       <td>${esc(f.algorithm)}</td>
       <td><span class="badge ${riskClass(f.risk_level)}">${esc(f.risk_level)}</span></td>
-      <td>${esc(f.recommendation)}</td>
-    </tr>`;
+      <td>${esc(f.recommendation)}<span class="row-caret" aria-hidden="true">▸</span></td>
+    </tr>
+    <tr class="finding-detail hidden" id="${rid}"><td colspan="5">
+      <div class="why-block">
+        <div class="why-q"><span class="why-label">Why it matters</span>${esc(f.why) || "No additional detail."}</div>
+        ${meta ? `<div class="why-meta mono">${meta}</div>` : ""}
+      </div>
+    </td></tr>`;
+  }
+
+  // Expand/collapse a finding's quantum-impact detail row. Delegated once per
+  // table body so it survives filter re-renders.
+  function toggleFinding(tr) {
+    const detail = document.getElementById(tr.getAttribute("data-target"));
+    if (!detail) return;
+    const open = detail.classList.toggle("hidden") === false;
+    tr.setAttribute("aria-expanded", open ? "true" : "false");
+    tr.classList.toggle("open", open);
+  }
+  function wireFindingToggle(tbody) {
+    if (!tbody || tbody.dataset.wired === "1") return;
+    tbody.dataset.wired = "1";
+    tbody.addEventListener("click", (e) => {
+      const tr = e.target.closest("tr.finding-row");
+      if (tr) toggleFinding(tr);
+    });
+    tbody.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const tr = e.target.closest("tr.finding-row");
+      if (tr) { e.preventDefault(); toggleFinding(tr); }
+    });
   }
 
   async function loadSettings() {
@@ -705,9 +739,11 @@
   function renderSd() {
     const lvl = $("#sd-filter").value;
     const rows = sdCache.filter((f) => lvl === "all" || f.risk_level === lvl);
-    $("#sd-body").innerHTML = rows.length
+    const tb = $("#sd-body");
+    tb.innerHTML = rows.length
       ? rows.map(findingRow).join("")
       : `<tr><td colspan="5" class="empty">No findings at this level.</td></tr>`;
+    wireFindingToggle(tb);
   }
   async function exportScan(id, fmt) {
     try {

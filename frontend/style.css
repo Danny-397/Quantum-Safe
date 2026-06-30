@@ -315,6 +315,23 @@ table.tbl tr:hover td { background: var(--panel-2); }
 .badge.r-medium { border-color: var(--warning); }
 .badge.r-low { border-color: var(--safe); }
 
+/* ---------- Expandable finding rows (quantum impact) ---------- */
+.finding-row { cursor: pointer; }
+.finding-row td:last-child { padding-right: 30px; position: relative; }
+.row-caret { position: absolute; right: 12px; top: 11px; color: var(--muted-2);
+  font-size: 11px; transition: transform .15s ease, color .15s ease; }
+.finding-row:hover .row-caret { color: var(--accent); }
+.finding-row.open .row-caret { transform: rotate(90deg); color: var(--accent); }
+.finding-row.open td { background: var(--panel-2); }
+.finding-detail td { background: var(--bg-1); padding: 0 12px; }
+.finding-detail:hover td { background: var(--bg-1); }
+.why-block { padding: 14px 16px 16px; border-left: 2px solid var(--accent); }
+.why-q { font-size: 13.5px; color: #c6d0e4; line-height: 1.65; }
+.why-label { display: inline-block; font-family: var(--mono); font-size: 10.5px;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-right: 10px; }
+.why-meta { color: var(--muted); font-size: 12px; margin-top: 10px; }
+.why-meta .sep { color: var(--muted-2); margin: 0 8px; }
+
 .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
 .toolbar select, .toolbar input {
   background: #05060d; border: 1px solid var(--border); color: var(--text);
