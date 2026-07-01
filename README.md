@@ -507,6 +507,20 @@ Full reasoning per algorithm: [docs/NIST_MAPPING.md](docs/NIST_MAPPING.md).
 
 ---
 
+## If this were a product
+
+QuantumSafe is intentionally **free and open source** — the core scan needs no
+account, and the CLI / GitHub Action are the primary way it's meant to be used.
+That's a deliberate choice, not a missing feature: a login wall would only add
+friction to a tool whose value is instant.
+
+For the record, the productization thinking exists even though it isn't built:
+the free tier would stay everything shown here (scan, score, migration plan, all
+exports); a paid tier would be the things that only make sense for an
+organization — scheduled re-scans with drift alerts, multi-repo/org dashboards,
+SSO, and audit-ready CBOM history for compliance. Those are operational features,
+not gates on the core detection, which is the part that should always be open.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

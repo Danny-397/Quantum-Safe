@@ -308,6 +308,10 @@
     if (sample) sample.addEventListener("click", () => { input.value = DEMO_SAMPLE; renderDemo(); });
     const run = $("#demo-run");
     if (run) run.addEventListener("click", runRealDemo);
+    // Value-first: any "Scan free" / hero CTA drops the cursor into the editor
+    // once the anchor has scrolled the demo into view.
+    $$('a[href="#try"]').forEach((a) =>
+      a.addEventListener("click", () => setTimeout(() => input.focus({ preventScroll: true }), 350)));
     renderDemo();
   }
 

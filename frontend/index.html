@@ -16,6 +16,9 @@
 <meta name="twitter:description" content="Detect RSA, ECC, and weak crypto. Score quantum risk 0–100. Get NIST-aligned migration recommendations." />
 <meta name="twitter:image" content="og-image.svg" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%235b73e8'/><circle cx='7.3' cy='7.1' r='3.4' fill='none' stroke='white' stroke-width='1.4'/><path d='M8.7 8.5 11 10.8' stroke='white' stroke-width='1.5' stroke-linecap='round'/></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -27,26 +30,28 @@
       <a href="#detect">Detection</a>
       <a href="research.html">Research</a>
       <a href="login.html">Sign in</a>
-      <a href="login.html?mode=register" class="btn btn-sm btn-primary">Sign up free</a>
+      <a href="#try" class="btn btn-sm btn-primary">Scan free ↓</a>
     </nav>
   </header>
 
   <main>
     <section class="hero wrap">
       <div class="hero-copy">
-        <div class="eyebrow">// Post-quantum code scanner</div>
-        <h1>Find the cryptography a quantum computer will <span class="grn">break</span>.</h1>
-        <p class="sub">QuantumSafe scans your code for RSA, ECC, and the other algorithms that
-          Shor's and Grover's algorithms defeat — scores the risk <strong>0–100</strong> and maps
-          every finding to its NIST <strong>FIPS&nbsp;203/204</strong> replacement.</p>
+        <div class="eyebrow">// Post-quantum readiness scanner</div>
+        <h1>Find the encryption quantum computers will <span class="grn">break</span> — before someone else does.</h1>
+        <p class="sub">Data you encrypt today can be harvested now and decrypted once quantum
+          hardware arrives. QuantumSafe flags every <strong>RSA</strong>, <strong>ECC</strong>, and
+          legacy algorithm at risk, scores your exposure <strong>0–100</strong>, and gives you the
+          NIST-approved replacement for each — <strong>FIPS&nbsp;203/204</strong>.</p>
         <div class="hero-cta">
-          <a href="login.html?mode=register" class="btn btn-primary">Scan your code — free</a>
-          <a href="#try" class="btn">Try it live ↓</a>
+          <a href="#try" class="btn btn-primary" id="hero-scan">Scan your code — free ↓</a>
+          <a href="https://github.com/Danny-397/Quantamn-Safe" class="btn">View on GitHub</a>
         </div>
-        <p class="hero-note">Runs in your browser — no install. Prefer the terminal? <code id="copy-install">pip install quantumsafe</code></p>
+        <p class="hero-note">No account needed · 11 languages · SARIF &amp; CBOM export · <code id="copy-install">pip install quantumsafe</code></p>
       </div>
 
-      <div class="terminal" aria-hidden="true">
+      <div class="hero-visual">
+        <div class="terminal" aria-hidden="true">
         <div class="term-head"><span class="d"></span><span class="d"></span><span class="d"></span><span class="t">quantumsafe — scan</span></div>
 <div class="term-body"><span class="c">$</span> quantumsafe scan --repo github.com/acme/payments-api
 <span class="dim">  cloning · scanning 1,284 files</span>
@@ -62,6 +67,8 @@
 
   <span class="c">→</span> replace RSA/ECC with ML-KEM (Kyber) · FIPS 203
 </div>
+        </div>
+        <p class="term-caption mono">illustrative output — run the real scanner below ↓</p>
       </div>
     </section>
 
@@ -103,8 +110,9 @@
           </div>
           <div class="demo-findings" id="demo-findings"></div>
           <p class="muted demo-upsell">
-            This scans one snippet. A free account scans whole repos &amp; GitHub, with history,
-            reports, and alerts. <a href="login.html?mode=register">Create an account →</a>
+            This scans one snippet — free, no account. Point the CLI at a whole GitHub repo,
+            or <a href="login.html?mode=register">create a free account</a> to scan repos in the
+            browser and keep your scan history.
           </p>
         </div>
       </div>
