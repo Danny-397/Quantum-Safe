@@ -119,7 +119,7 @@ engine:
    encapsulation mechanism, the mathematical basis of CRYSTALS-Kyber / ML-KEM.
 
 These are delivered through three product surfaces that all consume the same
-detection engine: a **CLI** (`pip install quantumsafe`), a **Flask REST API**, and
+detection engine: a **CLI** (`pip install quantumsafe-scan`), a **Flask REST API**, and
 a **static web dashboard**. A detailed component and data-flow description is in
 [ARCHITECTURE.md](ARCHITECTURE.md).
 

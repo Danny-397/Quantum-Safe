@@ -169,7 +169,7 @@ installs only the core requirements stays lightweight.
  │ frontend/  +     │ ──────► │ backend/  Flask API  │ ──► │ users/scans/ │
  │ config.js (API)  │  CORS   │ (gunicorn)           │     │ findings     │
  └──────────────────┘         └──────────────────────┘     └──────────────┘
-   PyPI: pip install quantumsafe → CLI runs anywhere, optionally syncs to the API
+   PyPI: pip install quantumsafe-scan → CLI runs anywhere, optionally syncs to the API
 ```
 
 CORS is restricted to `FRONTEND_ORIGIN`; secrets come from environment variables;

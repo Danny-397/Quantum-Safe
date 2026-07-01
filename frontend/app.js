@@ -122,7 +122,7 @@
       copyBtn.title = "Click to copy";
       copyBtn.addEventListener("click", async () => {
         try {
-          await navigator.clipboard.writeText("pip install quantumsafe");
+          await navigator.clipboard.writeText("pip install quantumsafe-scan");
           const orig = copyBtn.textContent;
           copyBtn.textContent = "copied ✓";
           setTimeout(() => (copyBtn.textContent = orig), 1200);

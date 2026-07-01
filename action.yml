@@ -32,8 +32,8 @@ runs:
 
     - name: Install QuantumSafe
       shell: bash
-      # Once published: pip install quantumsafe
-      run: pip install quantumsafe
+      # Once published: pip install quantumsafe-scan
+      run: pip install quantumsafe-scan
 
     - name: Run QuantumSafe scan
       shell: bash

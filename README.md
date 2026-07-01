@@ -35,7 +35,7 @@ solution:
 
 The detection layer ships through three surfaces that share **one** engine:
 
-- A **free CLI** (`pip install quantumsafe`) — scan local dirs or public GitHub
+- A **free CLI** (`pip install quantumsafe-scan`) — scan local dirs or public GitHub
   repos; export JSON / HTML / SARIF / CBOM / SVG badge.
 - A **Flask REST API** — powers the dashboard, ingests scans, handles auth.
 - A **dark, terminal-style web dashboard** — scan history, findings, migration
@@ -108,7 +108,7 @@ defense module (which *implements* the recommended fix). Full write-up in
   zero failures.
 - **Measured, not asserted** — a labeled benchmark with adversarial decoys, plus an
   empirical study (88% of real repos affected).
-- **Production practice** — one shared engine for CLI + API, **65 automated
+- **Production practice** — one shared engine for CLI + API, **74 automated
   tests**, CI, Docker, a reusable GitHub Action, and multi-service deploy configs.
 
 ---
@@ -253,7 +253,7 @@ to exploit. See [pqc/README.md](pqc/README.md).
 ## CLI: install & usage
 
 ```bash
-pip install quantumsafe        # from PyPI once published
+pip install quantumsafe-scan        # from PyPI once published
 # or, from this repo:
 pip install -e .
 ```
