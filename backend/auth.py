@@ -76,6 +76,27 @@ def current_user() -> User | None:
     return db.session.get(User, int(identity))
 
 
+def optional_user() -> User | None:
+    """Resolve a User from an API key or JWT if one is present; None if anonymous.
+
+    Unlike ``api_key_or_jwt`` this never aborts the request — it lets a route serve
+    both signed-in and logged-out callers (e.g. anonymous scanning).
+    """
+    api_key = request.headers.get("X-API-Key")
+    auth_header = request.headers.get("Authorization", "")
+    if not api_key and auth_header.startswith("Bearer qs_live_"):
+        api_key = auth_header.split(" ", 1)[1]
+
+    if api_key and api_key.startswith("qs_live_"):
+        return User.query.filter_by(api_key_hash=hash_api_key(api_key)).first()
+
+    try:
+        verify_jwt_in_request(optional=True)
+    except Exception:
+        return None
+    return current_user()
+
+
 def api_key_or_jwt(fn):
     """Allow a route to be called with either a CLI API key or a dashboard JWT."""
     @functools.wraps(fn)

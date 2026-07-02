@@ -15,7 +15,7 @@ from flask import Blueprint, Response, g, jsonify, request
 from flask_jwt_extended import jwt_required
 from sqlalchemy import func
 
-from auth import api_key_or_jwt, current_user, send_email
+from auth import api_key_or_jwt, current_user, optional_user, send_email
 from extensions import db, limiter
 from models import Finding, Scan, User, generate_api_key
 from quantumsafe.recommender import recommend
@@ -52,9 +52,12 @@ def _require_user() -> User:
 
 @api_bp.route("/scan", methods=["POST"])
 @limiter.limit("30 per hour")
-@api_key_or_jwt
+@limiter.limit("10 per hour", exempt_when=lambda: optional_user() is not None)
 def create_scan():
-    user: User = g.current_user
+    """Run a scan for anyone. Signed-in callers get the result saved to their
+    history; anonymous callers get the report back but nothing is stored.
+    """
+    user: User | None = optional_user()
     try:
         if "file" in request.files:
             report = scan_upload(request.files["file"])
@@ -68,6 +71,10 @@ def create_scan():
         return jsonify({"error": str(exc)}), 400
     except RuntimeError as exc:
         return jsonify({"error": str(exc)}), 502
+
+    if user is None:
+        # Anonymous: return the report; the browser holds it (nothing persisted).
+        return jsonify({"report": report}), 201
 
     scan = persist_scan(user.id, report)
     _maybe_send_alert(user, scan, report)
@@ -183,6 +190,59 @@ def get_scan(scan_id: int):
     return jsonify({"scan": scan.to_dict(include_findings=True)})
 
 
+def _render_export(report: dict, fmt: str, filename_base: str):
+    """Render a canonical report dict to a downloadable Response.
+
+    Returns ``None`` for an unknown format so the caller can emit a 400. Missing
+    optional fields are filled so both DB-backed and browser-held reports work.
+    """
+    report = dict(report)
+    report.setdefault("tool", "quantumsafe")
+    report.setdefault("version", "0.1.0")
+    report.setdefault("target", "scan")
+    report.setdefault("generated_at", "")
+    report.setdefault("risk_message", "")
+    summary = dict(report.get("summary") or {})
+    summary.setdefault("high", 0)
+    summary.setdefault("medium", 0)
+    summary.setdefault("low", 0)
+    summary.setdefault("total_findings", summary["high"] + summary["medium"] + summary["low"])
+    report["summary"] = summary
+    findings = report.get("findings", [])
+
+    if fmt == "json":
+        return jsonify(report)
+
+    if fmt == "csv":
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(["file_path", "line_number", "algorithm", "risk_level",
+                         "recommendation", "nist_reference", "complexity"])
+        for f in findings:
+            writer.writerow([f.get("file_path", ""), f.get("line_number", 0),
+                             f.get("algorithm", ""), f.get("risk_level", ""),
+                             f.get("recommendation", ""), f.get("nist_reference", ""),
+                             f.get("complexity", "")])
+        return Response(
+            buf.getvalue(), mimetype="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename_base}.csv"},
+        )
+
+    renderers = {
+        "sarif": (to_sarif, "application/json", "sarif"),
+        "cbom": (to_cbom, "application/json", "cbom.json"),
+        "svg": (to_badge_svg, "image/svg+xml", "svg"),
+        "html": (to_html, "text/html", "html"),
+    }
+    if fmt in renderers:
+        render, mime, suffix = renderers[fmt]
+        return Response(
+            render(report), mimetype=mime,
+            headers={"Content-Disposition": f"attachment; filename={filename_base}.{suffix}"},
+        )
+    return None
+
+
 @api_bp.route("/scans/<int:scan_id>/export", methods=["GET"])
 @jwt_required()
 def export_scan(scan_id: int):
@@ -192,45 +252,37 @@ def export_scan(scan_id: int):
         return jsonify({"error": "Scan not found."}), 404
 
     fmt = request.args.get("format", "json").lower()
-    findings = [f.to_dict() for f in scan.findings]
-
     if fmt == "json":
+        # Signed-in JSON export keeps the richer scan shape (id, created_at, counts).
         return jsonify(scan.to_dict(include_findings=True))
 
-    if fmt == "csv":
-        buf = io.StringIO()
-        writer = csv.writer(buf)
-        writer.writerow(["file_path", "line_number", "algorithm", "risk_level",
-                         "recommendation", "nist_reference", "complexity"])
-        for f in findings:
-            writer.writerow([f["file_path"], f["line_number"], f["algorithm"],
-                             f["risk_level"], f["recommendation"],
-                             f["nist_reference"], f["complexity"]])
-        return Response(
-            buf.getvalue(), mimetype="text/csv",
-            headers={"Content-Disposition": f"attachment; filename=scan_{scan_id}.csv"},
-        )
+    report = {
+        "tool": "quantumsafe", "version": "0.1.0", "target": scan.repo_url,
+        "generated_at": scan.created_at.isoformat() if scan.created_at else "",
+        "risk_score": scan.risk_score, "risk_band": scan.risk_band,
+        "risk_message": "", "summary": scan.to_dict()["summary"],
+        "findings": [f.to_dict() for f in scan.findings],
+    }
+    resp = _render_export(report, fmt, f"scan_{scan_id}")
+    if resp is None:
+        return jsonify({"error": "format must be json, csv, html, sarif, cbom, or svg."}), 400
+    return resp
 
-    if fmt in ("html", "sarif", "cbom", "svg"):
-        report = {
-            "tool": "quantumsafe", "version": "0.1.0", "target": scan.repo_url,
-            "generated_at": scan.created_at.isoformat() if scan.created_at else "",
-            "risk_score": scan.risk_score, "risk_band": scan.risk_band,
-            "risk_message": "", "summary": scan.to_dict()["summary"], "findings": findings,
-        }
-        renderers = {
-            "sarif": (to_sarif, "application/json", "sarif"),
-            "cbom": (to_cbom, "application/json", "cbom.json"),
-            "svg": (to_badge_svg, "image/svg+xml", "svg"),
-            "html": (to_html, "text/html", "html"),
-        }
-        render, mime, suffix = renderers[fmt]
-        return Response(
-            render(report), mimetype=mime,
-            headers={"Content-Disposition": f"attachment; filename=scan_{scan_id}.{suffix}"},
-        )
 
-    return jsonify({"error": "format must be json, csv, html, sarif, cbom, or svg."}), 400
+@api_bp.route("/export", methods=["POST"])
+@limiter.limit("60 per hour")
+def export_from_report():
+    """Stateless export for a browser-held (anonymous) report."""
+    data = request.get_json(silent=True) or {}
+    fmt = str(data.get("format", "json")).lower()
+    try:
+        report = _sanitize_report(data.get("report", data))
+    except (KeyError, TypeError, ValueError):
+        return jsonify({"error": "Invalid scan report payload."}), 400
+    resp = _render_export(report, fmt, "quantumsafe_scan")
+    if resp is None:
+        return jsonify({"error": "format must be json, csv, html, sarif, cbom, or svg."}), 400
+    return resp
 
 
 # --------------------------------------------------------------------------- #
@@ -278,6 +330,39 @@ def overview():
 # --------------------------------------------------------------------------- #
 
 
+def _build_migration_plan(findings: list[dict]) -> dict[str, list[dict]]:
+    """Group findings into a HIGH/MEDIUM/LOW NIST migration plan.
+
+    ``findings`` is a list of dicts with at least ``family``, ``algorithm``,
+    ``risk_level``, ``file_path`` and ``line_number`` keys. Identical
+    recommendations are aggregated with an occurrence count.
+    """
+    groups: dict[str, list[dict]] = {"HIGH": [], "MEDIUM": [], "LOW": []}
+    for f in findings:
+        family = f.get("family", "")
+        algorithm = f.get("algorithm", "")
+        level = f.get("risk_level", "LOW")
+        if level not in groups:
+            continue
+        rec = recommend(family)
+        key = (family, algorithm)
+        existing = next((g for g in groups[level] if (g["family"], g["algorithm"]) == key), None)
+        if existing:
+            existing["occurrences"] += 1
+        else:
+            groups[level].append({
+                "algorithm": algorithm,
+                "family": family,
+                "replace_with": rec.replacement,
+                "nist_reference": rec.nist_reference,
+                "complexity": rec.complexity,
+                "detail": rec.detail,
+                "occurrences": 1,
+                "example": f"{f.get('file_path', '')}:{f.get('line_number', 0)}",
+            })
+    return groups
+
+
 @api_bp.route("/scans/<int:scan_id>/migration", methods=["GET"])
 @jwt_required()
 def migration_plan(scan_id: int):
@@ -286,34 +371,27 @@ def migration_plan(scan_id: int):
     if scan is None:
         return jsonify({"error": "Scan not found."}), 404
 
-    groups: dict[str, list[dict]] = {"HIGH": [], "MEDIUM": [], "LOW": []}
-    seen: set[tuple] = set()
-    for f in scan.findings:
-        rec = recommend(f.family)
-        key = (f.family, f.algorithm)
-        item = {
-            "algorithm": f.algorithm,
-            "family": f.family,
-            "replace_with": rec.replacement,
-            "nist_reference": rec.nist_reference,
-            "complexity": rec.complexity,
-            "detail": rec.detail,
-            "occurrences": 1,
-            "example": f"{f.file_path}:{f.line_number}",
-        }
-        # Aggregate identical recommendations, counting occurrences.
-        existing = next((g for g in groups[f.risk_level] if (g["family"], g["algorithm"]) == key), None)
-        if existing:
-            existing["occurrences"] += 1
-        else:
-            groups[f.risk_level].append(item)
-        seen.add(key)
-
     return jsonify({
         "scan_id": scan.id,
         "risk_score": scan.risk_score,
         "risk_band": scan.risk_band,
-        "plan": groups,
+        "plan": _build_migration_plan([f.to_dict() for f in scan.findings]),
+    })
+
+
+@api_bp.route("/migration", methods=["POST"])
+@limiter.limit("60 per hour")
+def migration_plan_from_report():
+    """Stateless migration plan for a browser-held (anonymous) report."""
+    data = request.get_json(silent=True) or {}
+    try:
+        report = _sanitize_report(data.get("report", data))
+    except (KeyError, TypeError, ValueError):
+        return jsonify({"error": "Invalid scan report payload."}), 400
+    return jsonify({
+        "risk_score": report["risk_score"],
+        "risk_band": report["risk_band"],
+        "plan": _build_migration_plan(report["findings"]),
     })
 
 

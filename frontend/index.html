@@ -110,11 +110,35 @@
           </div>
           <div class="demo-findings" id="demo-findings"></div>
           <p class="muted demo-upsell">
-            This scans one snippet — free, no account. Point the CLI at a whole GitHub repo,
-            or <a href="login.html?mode=register">create a free account</a> to scan repos in the
-            browser and keep your scan history.
+            This scans one snippet, in your browser. Scan a <a href="#scan-repo">whole repo or a .zip</a>
+            below — still no account. A <a href="login.html?mode=register">free account</a> only adds
+            saved scan history, email alerts, and a CLI key.
           </p>
         </div>
+      </div>
+    </section>
+
+    <!-- Scan a whole codebase — anonymous, no account -->
+    <section class="section wrap" id="scan-repo">
+      <div class="section-head">
+        <div class="eyebrow">// Scan a whole codebase — no account needed</div>
+        <h2>Point it at a GitHub repo or upload a .zip.</h2>
+        <p class="lead">The full engine runs across every file, scores your exposure 0–100, and builds a
+          NIST migration plan. Nothing is saved unless you create a free account.</p>
+      </div>
+      <div class="home-scan card">
+        <div class="home-scan-row">
+          <input id="home-scan-repo" type="text" placeholder="https://github.com/owner/repo"
+                 aria-label="GitHub repository URL" />
+          <button class="btn btn-primary" id="home-scan-run">Scan repo →</button>
+        </div>
+        <div class="home-scan-or"><span>or</span></div>
+        <label class="home-scan-file">
+          <span class="muted">Upload a <strong>.zip</strong> of your codebase (25 MB max)</span>
+          <input id="home-scan-file" type="file" accept=".zip" aria-label="Upload a .zip of your codebase" />
+        </label>
+        <div id="home-scan-msg" class="msg"></div>
+        <p class="muted mono home-scan-note">github.com HTTPS repos only · results open instantly and are held in your browser</p>
       </div>
     </section>
 
@@ -179,11 +203,12 @@
       <div class="cta-band">
         <div>
           <h2>Free, open source, ready to scan.</h2>
-          <p>No paywall, no credit card — every feature included.</p>
+          <p>Every feature works without an account. Sign up only to save your scan history
+            and get email alerts on HIGH-risk findings.</p>
           <div class="mono-note">Based on NIST PQC standards · FIPS 203 / 204 / 205</div>
         </div>
         <div style="display:flex;gap:12px;flex-wrap:wrap;">
-          <a href="login.html?mode=register" class="btn btn-primary">Create free account</a>
+          <a href="#scan-repo" class="btn btn-primary">Scan now — no account</a>
           <a href="https://github.com/Danny-397/Quantamn-Safe" class="btn">View source</a>
         </div>
       </div>

@@ -14,7 +14,7 @@
   <div class="app">
     <aside class="sidebar">
       <div class="brand"><svg class="logo" viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="qsg" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#5b73e8"/><stop offset="1" stop-color="#7c8df0"/></linearGradient></defs><g stroke="url(#qsg)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" opacity=".8"><path d="M3 9V3h6"/><path d="M23 3h6v6"/><path d="M29 23v6h-6"/><path d="M9 29H3v-6"/></g><circle cx="15.5" cy="15" r="7" stroke="url(#qsg)" stroke-width="2.2"/><path d="M19 18.6 23 22.6" stroke="url(#qsg)" stroke-width="2.4" stroke-linecap="round"/></svg> QuantumSafe</div>
-      <nav id="side-nav">
+      <nav id="side-nav" class="acct-only">
         <a href="dashboard.html#overview">Overview</a>
         <a href="dashboard.html#scans" class="active">Scans</a>
         <a href="dashboard.html#findings">Findings</a>
@@ -22,14 +22,20 @@
         <a href="dashboard.html#settings">Settings</a>
       </nav>
       <div class="side-foot">
-        <a class="btn btn-block btn-sm" href="dashboard.html#scans">← Back to Scans</a>
-        <button class="btn btn-block btn-sm" id="btn-logout" style="margin-top:8px;">Log out</button>
+        <a class="btn btn-block btn-sm acct-only" href="dashboard.html#scans">← Back to Scans</a>
+        <a class="btn btn-block btn-sm anon-only hidden" href="index.html#try">← New scan</a>
+        <button class="btn btn-block btn-sm acct-only" id="btn-logout" style="margin-top:8px;">Log out</button>
         <div class="side-legal"><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></div>
       </div>
     </aside>
 
     <main class="main">
       <div id="global-msg" class="msg"></div>
+      <div id="save-banner" class="save-banner hidden">
+        <p><strong>This scan isn't saved.</strong>
+          <span class="muted">Create a free account to keep it in your history and get email alerts on HIGH-risk findings.</span></p>
+        <button class="btn btn-primary btn-sm" id="save-scan-btn">Sign in to save →</button>
+      </div>
       <div class="page-head">
         <h1>Scan Detail</h1>
         <div class="toolbar" style="margin:0;">

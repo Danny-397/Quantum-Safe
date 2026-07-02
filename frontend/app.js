@@ -21,6 +21,15 @@
   const setToken = (t) => localStorage.setItem(TOKEN_KEY, t);
   const clearToken = () => localStorage.removeItem(TOKEN_KEY);
 
+  // Anonymous scan results live in the browser only (nothing stored server-side
+  // unless the visitor has an account). RESULT_KEY holds the report currently
+  // being viewed; PENDING_SAVE holds a report waiting to be saved after login.
+  const RESULT_KEY = "qs_result";
+  const PENDING_SAVE = "qs_pending_save";
+  const getResult = () => { try { return JSON.parse(sessionStorage.getItem(RESULT_KEY)); } catch (_) { return null; } };
+  const setResult = (obj) => sessionStorage.setItem(RESULT_KEY, JSON.stringify(obj));
+  const clearResult = () => sessionStorage.removeItem(RESULT_KEY);
+
   function esc(s) {
     return String(s == null ? "" : s)
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -131,6 +140,21 @@
     }
 
     initDemoScanner();
+    initHomeScan();
+  }
+
+  // Anonymous "scan a whole repo or upload a .zip" launcher on the landing page.
+  function initHomeScan() {
+    const btn = $("#home-scan-run");
+    if (!btn) return;
+    btn.addEventListener("click", () => submitScan({
+      repo: ($("#home-scan-repo").value || "").trim(),
+      file: $("#home-scan-file").files[0],
+      msgEl: $("#home-scan-msg"),
+      btn,
+    }));
+    const repo = $("#home-scan-repo");
+    if (repo) repo.addEventListener("keydown", (e) => { if (e.key === "Enter") btn.click(); });
   }
 
   // ---- In-browser live scanner (client-side, nothing leaves the browser) ----
@@ -332,6 +356,23 @@
   // =========================================================================
   //  AUTH (login / register / forgot / reset)
   // =========================================================================
+  // After a successful login/register, persist any pending anonymous scan to the
+  // new account's history, then land the user on the right page.
+  async function afterAuthRedirect() {
+    let pending = null;
+    try { pending = JSON.parse(sessionStorage.getItem(PENDING_SAVE)); } catch (_) {}
+    if (pending) {
+      sessionStorage.removeItem(PENDING_SAVE);
+      try {
+        const r = await api("/api/v1/scan/import", { noRedirect: true, json: { report: pending } });
+        clearResult();
+        location.href = "scan.html?id=" + r.scan_id;
+        return;
+      } catch (_) { /* fall through to dashboard if the save fails */ }
+    }
+    location.href = "dashboard.html";
+  }
+
   function initAuth() {
     const params = new URLSearchParams(location.search);
     const msg = $("#msg");
@@ -365,7 +406,7 @@
           json: { email: forms.login.email.value, password: forms.login.password.value },
         });
         setToken(d.token);
-        location.href = "dashboard.html";
+        await afterAuthRedirect();
       } catch (err) { setLoading(b, false); showMsg(msg, err.message); }
     });
 
@@ -388,7 +429,7 @@
           },
         });
         setToken(d.token);
-        location.href = "dashboard.html";
+        await afterAuthRedirect();
       } catch (err) { setLoading(b, false); showMsg(msg, err.message); }
     });
 
@@ -684,28 +725,41 @@
     } catch (err) { showMsg($("#global-msg"), err.message); }
   }
 
-  async function runScan() {
-    const msg = $("#scan-msg");
-    const repo = $("#scan-repo").value.trim();
-    const file = $("#scan-file").files[0];
-    const btn = $("#btn-run-scan");
-    if (!repo && !file) { showMsg(msg, "Provide a GitHub URL or a .zip file."); return; }
+  // Shared scan submitter used by both the dashboard modal (signed in) and the
+  // landing page (anonymous). Signed-in scans are saved server-side and open by
+  // id; anonymous scans are held in the browser and opened from sessionStorage.
+  async function submitScan({ repo, file, msgEl, btn }) {
+    if (!repo && !file) { showMsg(msgEl, "Provide a GitHub URL or a .zip file."); return; }
     setLoading(btn, true, "Scanning");
-    showMsg(msg, "Scanning… cloning and analyzing your code. This can take up to a minute.", "success");
+    showMsg(msgEl, "Scanning… cloning and analyzing your code. This can take up to a minute.", "success");
     try {
       let res;
       if (file) {
         const fd = new FormData();
         fd.append("file", file);
-        res = await api("/api/v1/scan", { method: "POST", body: fd });
+        res = await api("/api/v1/scan", { method: "POST", body: fd, noRedirect: true });
       } else {
-        res = await api("/api/v1/scan", { method: "POST", json: { repo_url: repo } });
+        res = await api("/api/v1/scan", { method: "POST", json: { repo_url: repo }, noRedirect: true });
       }
-      location.href = "scan.html?id=" + res.scan_id;
+      if (res.scan_id) {
+        location.href = "scan.html?id=" + res.scan_id;   // saved to the account
+      } else {
+        setResult({ report: res.report, target: res.report.target });  // browser-held
+        location.href = "scan.html";
+      }
     } catch (err) {
-      showMsg(msg, err.message);
+      showMsg(msgEl, err.message);
       setLoading(btn, false);
     }
+  }
+
+  function runScan() {
+    return submitScan({
+      repo: $("#scan-repo").value.trim(),
+      file: $("#scan-file").files[0],
+      msgEl: $("#scan-msg"),
+      btn: $("#btn-run-scan"),
+    });
   }
 
   // =========================================================================
@@ -713,33 +767,63 @@
   // =========================================================================
   let sdCache = [];
   async function initScanDetail() {
-    if (!requireAuth()) return;
-    wireLogout();
     const id = new URLSearchParams(location.search).get("id");
-    if (!id) { showMsg($("#global-msg"), "No scan id provided."); return; }
-    $("#sd-migration-link").href = "migration.html?scan=" + id;
-    skelRows($("#sd-body"), 6, 5);
+    const authed = !!getToken();
 
-    try {
-      const scan = (await api("/api/v1/scans/" + id)).scan;
-      renderScore({ score: "#sd-score", band: "#sd-band", meaning: "#sd-meaning", scale: "#sd-scale" },
-                  scan.risk_score, scan.risk_band);
-      $("#sd-target").textContent = scan.repo_url;
-      $("#sd-date").textContent = fmtDate(scan.created_at);
-      $("#sd-high").textContent = scan.summary.high;
-      $("#sd-med").textContent = scan.summary.medium;
-      $("#sd-low").textContent = scan.summary.low;
-      sdCache = scan.findings;
-      renderSd();
-      $("#sd-filter").onchange = renderSd;
-      $$("[data-export]").forEach((b) =>
-        b.addEventListener("click", () => exportScan(id, b.dataset.export)));
-    } catch (err) {
-      showMsg($("#global-msg"), err.message);
-      const b = $("#sd-body");
-      if (b) b.innerHTML = `<tr><td colspan="5" class="empty">Couldn't load this scan.</td></tr>`;
+    // Signed-in view of a saved scan.
+    if (id && authed) {
+      wireLogout();
+      $("#sd-migration-link").href = "migration.html?scan=" + id;
+      skelRows($("#sd-body"), 6, 5);
+      try {
+        const scan = (await api("/api/v1/scans/" + id)).scan;
+        renderScanDetail({
+          risk_score: scan.risk_score, risk_band: scan.risk_band, target: scan.repo_url,
+          created_at: scan.created_at, summary: scan.summary, findings: scan.findings,
+        });
+        $$("[data-export]").forEach((b) =>
+          b.addEventListener("click", () => downloadExport(b.dataset.export, { id })));
+      } catch (err) {
+        showMsg($("#global-msg"), err.message);
+        const b = $("#sd-body");
+        if (b) b.innerHTML = `<tr><td colspan="5" class="empty">Couldn't load this scan.</td></tr>`;
+      }
+      return;
     }
+
+    // Anonymous view of a browser-held scan.
+    applyAnonChrome();
+    const held = getResult();
+    if (!held || !held.report) {
+      const b = $("#sd-body");
+      if (b) b.innerHTML = `<tr><td colspan="5" class="empty">No scan to show — <a href="index.html#try">run one from the home page</a>.</td></tr>`;
+      return;
+    }
+    const report = held.report;
+    $("#sd-migration-link").href = "migration.html";
+    renderScanDetail({
+      risk_score: report.risk_score, risk_band: report.risk_band,
+      target: report.target || held.target, created_at: report.generated_at,
+      summary: report.summary, findings: report.findings,
+    });
+    $$("[data-export]").forEach((b) =>
+      b.addEventListener("click", () => downloadExport(b.dataset.export, { report })));
+    wireSaveBanner(report);
   }
+
+  function renderScanDetail(scan) {
+    renderScore({ score: "#sd-score", band: "#sd-band", meaning: "#sd-meaning", scale: "#sd-scale" },
+                scan.risk_score, scan.risk_band);
+    $("#sd-target").textContent = scan.target;
+    $("#sd-date").textContent = fmtDate(scan.created_at);
+    $("#sd-high").textContent = scan.summary.high;
+    $("#sd-med").textContent = scan.summary.medium;
+    $("#sd-low").textContent = scan.summary.low;
+    sdCache = scan.findings || [];
+    renderSd();
+    $("#sd-filter").onchange = renderSd;
+  }
+
   function renderSd() {
     const lvl = $("#sd-filter").value;
     const rows = sdCache.filter((f) => lvl === "all" || f.risk_level === lvl);
@@ -749,16 +833,46 @@
       : `<tr><td colspan="5" class="empty">No findings at this level.</td></tr>`;
     wireFindingToggle(tb);
   }
-  async function exportScan(id, fmt) {
+
+  // Hide account-only chrome (log out, back-to-scans, dashboard nav) for
+  // anonymous viewers of scan.html / migration.html.
+  function applyAnonChrome() {
+    $$(".acct-only").forEach((el) => el.classList.add("hidden"));
+    $$(".anon-only").forEach((el) => el.classList.remove("hidden"));
+  }
+
+  // Wire the "sign in to save this scan" banner: stash the report and send the
+  // visitor to register; initAuth persists it after login.
+  function wireSaveBanner(report) {
+    const banner = $("#save-banner");
+    if (banner) banner.classList.remove("hidden");
+    const btn = $("#save-scan-btn");
+    if (btn) btn.addEventListener("click", () => {
+      try { sessionStorage.setItem(PENDING_SAVE, JSON.stringify(report)); } catch (_) {}
+      location.href = "login.html?mode=register";
+    });
+  }
+
+  // Download an export either from a saved scan (by id) or a browser-held report.
+  async function downloadExport(fmt, { id, report }) {
     try {
-      const res = await fetch(`${API_BASE}/api/v1/scans/${id}/export?format=${fmt}`, {
-        headers: { Authorization: "Bearer " + getToken() },
-      });
+      let res;
+      if (id) {
+        res = await fetch(`${API_BASE}/api/v1/scans/${id}/export?format=${fmt}`, {
+          headers: { Authorization: "Bearer " + getToken() },
+        });
+      } else {
+        res = await fetch(`${API_BASE}/api/v1/export`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ report, format: fmt }),
+        });
+      }
       if (!res.ok) throw new Error("Export failed");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = `scan_${id}.${fmt}`;
+      a.href = url; a.download = `quantumsafe_scan.${fmt}`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
     } catch (err) { showMsg($("#global-msg"), err.message); }
@@ -768,40 +882,64 @@
   //  MIGRATION PLAN
   // =========================================================================
   async function initMigration() {
-    if (!requireAuth()) return;
-    wireLogout();
+    const authed = !!getToken();
     const mc = $("#mig-container");
     if (mc) {
       mc.innerHTML = ('<div class="mig-item"><span class="skel w-40"></span>' +
         '<div style="height:10px"></div><span class="skel w-80"></span></div>').repeat(3);
     }
-    try {
-      let id = new URLSearchParams(location.search).get("scan");
-      if (!id) {
-        const list = await api("/api/v1/scans?per_page=1");
-        if (!list.scans.length) {
-          $("#mig-container").innerHTML = `<div class="empty">No scans yet. Run a scan first.</div>`;
-          return;
+
+    // Signed-in: build the plan from a saved scan.
+    if (authed) {
+      wireLogout();
+      try {
+        let id = new URLSearchParams(location.search).get("scan");
+        if (!id) {
+          const list = await api("/api/v1/scans?per_page=1");
+          if (!list.scans.length) {
+            $("#mig-container").innerHTML = `<div class="empty">No scans yet. Run a scan first.</div>`;
+            return;
+          }
+          id = list.scans[0].id;
         }
-        id = list.scans[0].id;
+        const d = await api(`/api/v1/scans/${id}/migration`);
+        renderMigrationPlan(d, `Scan #${d.scan_id} · Score ${d.risk_score} (${d.risk_band})`);
+      } catch (err) {
+        showMsg($("#global-msg"), err.message);
+        if (mc) mc.innerHTML = `<div class="empty">Couldn't load the migration plan. Refresh to retry.</div>`;
       }
-      const d = await api(`/api/v1/scans/${id}/migration`);
-      $("#mig-meta").textContent = `Scan #${d.scan_id} · Score ${d.risk_score} (${d.risk_band})`;
-      const order = [["HIGH", "Migrate immediately"], ["MEDIUM", "Plan migration"], ["LOW", "Monitor"]];
-      const html = order.map(([lvl, label]) => {
-        const items = d.plan[lvl] || [];
-        if (!items.length) return "";
-        return `<div class="mig-group">
-          <h2 class="${riskClass(lvl)}">${lvl} — ${label} (${items.length})</h2>
-          ${items.map((it) => migItem(it, lvl)).join("")}
-        </div>`;
-      }).join("");
-      $("#mig-container").innerHTML = html ||
-        `<div class="empty low">No quantum-vulnerable cryptography found. Good quantum hygiene.</div>`;
+      return;
+    }
+
+    // Anonymous: build the plan from the browser-held report.
+    applyAnonChrome();
+    const held = getResult();
+    if (!held || !held.report) {
+      if (mc) mc.innerHTML = `<div class="empty">No scan to plan for — <a href="index.html#try">run one from the home page</a>.</div>`;
+      return;
+    }
+    try {
+      const d = await api("/api/v1/migration", { noRedirect: true, json: { report: held.report } });
+      renderMigrationPlan(d, `Score ${d.risk_score} (${d.risk_band}) · not saved`);
     } catch (err) {
       showMsg($("#global-msg"), err.message);
-      if (mc) mc.innerHTML = `<div class="empty">Couldn't load the migration plan. Refresh to retry.</div>`;
+      if (mc) mc.innerHTML = `<div class="empty">Couldn't build the migration plan. Refresh to retry.</div>`;
     }
+  }
+
+  function renderMigrationPlan(d, metaText) {
+    $("#mig-meta").textContent = metaText;
+    const order = [["HIGH", "Migrate immediately"], ["MEDIUM", "Plan migration"], ["LOW", "Monitor"]];
+    const html = order.map(([lvl, label]) => {
+      const items = d.plan[lvl] || [];
+      if (!items.length) return "";
+      return `<div class="mig-group">
+        <h2 class="${riskClass(lvl)}">${lvl} — ${label} (${items.length})</h2>
+        ${items.map((it) => migItem(it, lvl)).join("")}
+      </div>`;
+    }).join("");
+    $("#mig-container").innerHTML = html ||
+      `<div class="empty low">No quantum-vulnerable cryptography found. Good quantum hygiene.</div>`;
   }
   function migItem(it, lvl) {
     return `<div class="mig-item ${riskClass(lvl)}">

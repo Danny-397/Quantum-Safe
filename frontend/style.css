@@ -234,6 +234,36 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.02em; font-weight: 6
 .consent { display: flex; gap: 9px; align-items: flex-start; font-size: 13px; color: var(--muted); margin-bottom: 16px; }
 .consent input { margin-top: 3px; accent-color: var(--accent); }
 
+/* ---------- Landing: anonymous repo/zip scan ---------- */
+.home-scan { max-width: 720px; margin: 0 auto; }
+.home-scan-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.home-scan-row input[type="text"] {
+  flex: 1 1 320px; background: #05060d; border: 1px solid var(--border); border-radius: var(--r-sm);
+  padding: 12px 13px; color: var(--text); font-size: 14px; font-family: var(--mono);
+  transition: border-color .14s ease, box-shadow .14s ease;
+}
+.home-scan-row input[type="text"]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91,115,232,.12); }
+.home-scan-or { display: flex; align-items: center; text-align: center; color: var(--muted); font-size: 12px; margin: 14px 0; }
+.home-scan-or::before, .home-scan-or::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+.home-scan-or span { padding: 0 12px; text-transform: uppercase; letter-spacing: .08em; }
+.home-scan-file { display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; }
+.home-scan-file input[type="file"] { color: var(--muted); font-size: 13px; }
+.home-scan-file input[type="file"]::file-selector-button {
+  background: var(--panel-2, #12121a); border: 1px solid var(--border); border-radius: var(--r-sm);
+  color: var(--text); padding: 8px 12px; margin-right: 10px; cursor: pointer; font-family: var(--sans);
+}
+.home-scan .msg { margin-top: 14px; margin-bottom: 0; }
+.home-scan-note { font-size: 12px; margin-top: 10px; }
+
+/* ---------- Save-this-scan banner (anonymous scan detail) ---------- */
+.save-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  background: rgba(91,115,232,.08); border: 1px solid var(--accent); border-radius: var(--r);
+  padding: 14px 16px; margin-bottom: 16px;
+}
+.save-banner p { margin: 0; font-size: 13.5px; color: var(--text); }
+.save-banner .muted { color: var(--muted); }
+
 /* ---------- Dashboard shell ---------- */
 .app { display: grid; grid-template-columns: 224px 1fr; min-height: 100vh; }
 .sidebar { background: rgba(16,21,28,.75); border-right: 1px solid var(--border); padding: 20px 14px; position: sticky; top: 0; height: 100vh; backdrop-filter: blur(6px); }

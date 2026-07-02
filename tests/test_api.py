@@ -173,6 +173,71 @@ def test_demo_scan_rejects_empty_and_huge(client):
     assert client.post("/api/v1/demo-scan", json={"code": "x" * 60000}).status_code == 413
 
 
+# ---- anonymous (no-account) flow ------------------------------------------ #
+
+def _anon_report(client):
+    """Run an anonymous zip scan and return its report (browser-held payload)."""
+    return client.post("/api/v1/scan",
+                       data={"file": (make_zip(), "code.zip")},
+                       content_type="multipart/form-data").get_json()["report"]
+
+
+def test_anonymous_scan_returns_report_not_persisted(client, app):
+    r = client.post("/api/v1/scan",
+                    data={"file": (make_zip(), "code.zip")},
+                    content_type="multipart/form-data")
+    assert r.status_code == 201
+    body = r.get_json()
+    assert "report" in body
+    assert "scan_id" not in body            # anonymous scans are never saved
+    assert body["report"]["summary"]["high"] >= 2
+    with app.app_context():
+        from models import Scan
+        assert Scan.query.count() == 0      # nothing written to the database
+
+
+def test_authenticated_scan_still_persists(auth_client):
+    client, headers = auth_client
+    r = client.post("/api/v1/scan", headers=headers,
+                    data={"file": (make_zip(), "code.zip")},
+                    content_type="multipart/form-data")
+    assert r.status_code == 201
+    assert r.get_json()["scan_id"]
+    assert client.get("/api/v1/overview", headers=headers).get_json()["total_scans"] == 1
+
+
+def test_anonymous_migration_from_report(client):
+    r = client.post("/api/v1/migration", json={"report": _anon_report(client)})
+    assert r.status_code == 200
+    assert len(r.get_json()["plan"]["HIGH"]) > 0   # RSA/MD5 land in HIGH
+
+
+def test_anonymous_export_sarif(client):
+    r = client.post("/api/v1/export", json={"report": _anon_report(client), "format": "sarif"})
+    assert r.status_code == 200
+    text = r.get_data(as_text=True)
+    assert '"version": "2.1.0"' in text and "runs" in text
+
+
+def test_anonymous_export_rejects_bad_format(client):
+    r = client.post("/api/v1/export", json={"report": _anon_report(client), "format": "docx"})
+    assert r.status_code == 400
+
+
+def test_save_after_login_persists_held_report(client):
+    """Anonymous scan → register → import the held report → it's in history."""
+    import uuid
+    report = _anon_report(client)
+    email = f"save-{uuid.uuid4().hex[:8]}@test.com"
+    token = client.post("/api/v1/auth/register",
+                        json={"email": email, "password": "password123", "accept_terms": True}
+                        ).get_json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    r = client.post("/api/v1/scan/import", headers=headers, json={"report": report})
+    assert r.status_code == 201
+    assert client.get("/api/v1/overview", headers=headers).get_json()["total_scans"] == 1
+
+
 def test_export_user_data(auth_client):
     client, headers = auth_client
     r = client.get("/api/v1/user/data", headers=headers)
