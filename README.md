@@ -1,6 +1,7 @@
 # QuantumSafe
 
 [![CI](https://github.com/Danny-397/Quantamn-Safe/actions/workflows/ci.yml/badge.svg)](https://github.com/Danny-397/Quantamn-Safe/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/quantumsafe-scan)](https://pypi.org/project/quantumsafe-scan/)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
 ![Standards](https://img.shields.io/badge/NIST-FIPS%20203%2F204%2F205-9d7bff)
