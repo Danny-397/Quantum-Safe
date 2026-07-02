@@ -259,7 +259,7 @@ def to_sarif(report: dict) -> str:
             "tool": {"driver": {
                 "name": "QuantumSafe",
                 "version": report.get("version", ""),
-                "informationUri": "https://github.com/Danny-397/Quantamn-Safe",
+                "informationUri": "https://github.com/Danny-397/Quantum-Safe",
                 "rules": rules,
             }},
             "results": results,

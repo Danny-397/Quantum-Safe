@@ -32,4 +32,4 @@ All notable changes to QuantumSafe are documented here. This project follows
   security disclosure policy (SECURITY.md + security.txt).
 - **Quality:** 45-test pytest suite, GitHub Actions CI, demo seed script.
 
-[Unreleased]: https://github.com/Danny-397/Quantamn-Safe
+[Unreleased]: https://github.com/Danny-397/Quantum-Safe

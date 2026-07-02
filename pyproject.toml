@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Danny-397/Quantamn-Safe"
+Homepage = "https://github.com/Danny-397/Quantum-Safe"
 
 [project.scripts]
 quantumsafe = "quantumsafe.cli:main"

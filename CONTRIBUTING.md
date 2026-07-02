@@ -5,8 +5,8 @@ Thanks for your interest in improving QuantumSafe!
 ## Development setup
 
 ```bash
-git clone https://github.com/Danny-397/Quantamn-Safe
-cd Quantamn-Safe
+git clone https://github.com/Danny-397/Quantum-Safe
+cd Quantum-Safe
 pip install -e .                       # the shared scanner package (CLI)
 pip install -r backend/requirements.txt
 pip install -r requirements-dev.txt    # pytest

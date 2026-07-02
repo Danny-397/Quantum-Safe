@@ -2,7 +2,7 @@
 #
 #   # .pre-commit-config.yaml
 #   repos:
-#     - repo: https://github.com/Danny-397/Quantamn-Safe
+#     - repo: https://github.com/Danny-397/Quantum-Safe
 #       rev: main
 #       hooks:
 #         - id: quantumsafe
