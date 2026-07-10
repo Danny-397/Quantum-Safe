@@ -536,7 +536,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   .sidebar {
     position: sticky; top: 0; z-index: 20; height: auto;
     border-right: none; border-bottom: 1px solid var(--border);
-    padding: 12px 16px; background: rgba(13,17,23,.92); backdrop-filter: blur(12px) saturate(140%);
+    padding: 12px 24px; background: rgba(13,17,23,.92); backdrop-filter: blur(12px) saturate(140%);
   }
   .sidebar .brand { margin: 0 0 10px; }
   .sidebar nav { flex-direction: row; gap: 2px; overflow-x: auto; -webkit-overflow-scrolling: touch;
@@ -548,18 +548,18 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
     display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
   .sidebar .side-foot .btn-block { width: auto; flex: 1 1 auto; margin-top: 0 !important; }
   .side-legal { margin-top: 0; margin-left: auto; }
-  .main { padding: 20px 18px; }
+  .main { padding: 20px 24px; }
 }
 
 @media (max-width: 720px) {
   /* Landing / research top nav → hamburger menu. */
-  .nav { position: relative; padding: 12px 18px; }
+  .nav { position: relative; padding: 12px 24px; }
   .nav-toggle { display: flex; }
   .nav-links {
     display: none; position: absolute; top: 100%; left: 0; right: 0;
     flex-direction: column; align-items: stretch; gap: 0;
     background: rgba(13,17,23,.98); backdrop-filter: blur(12px) saturate(140%);
-    border-bottom: 1px solid var(--border); padding: 6px 18px 14px;
+    border-bottom: 1px solid var(--border); padding: 6px 24px 14px;
     box-shadow: 0 24px 40px -30px rgba(0,0,0,.8);
   }
   .nav.nav-open .nav-links { display: flex; }
@@ -573,7 +573,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 
 @media (max-width: 640px) {
-  .wrap { padding: 0 16px; }
+  .wrap { padding: 0 24px; }
   .hero { padding: 36px 0 30px; }
   .hero h1 { font-size: 30px; }
   .hero .sub { font-size: 16px; }
@@ -583,8 +583,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   .hero-cta .btn, .cta-band .btn { flex: 1 1 auto; }
   .page-head { flex-wrap: wrap; gap: 12px; }
   .page-head .toolbar { width: 100%; }
-  .main { padding: 18px 16px; }
-  .legal { padding: 32px 18px 60px; }
+  .main { padding: 18px 24px; }
+  .legal { padding: 32px 24px 60px; }
   .legal h1 { font-size: 25px; }
   .scan-primary, .scan-secondary-head { text-align: left; }
 
