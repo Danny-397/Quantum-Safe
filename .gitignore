@@ -13,6 +13,9 @@ venv/
 .venv/
 env/
 
+# Node
+node_modules/
+
 # Env / secrets
 .env
 *.local

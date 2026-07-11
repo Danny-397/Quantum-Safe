@@ -1,0 +1,13 @@
+{
+  "name": "quantumsafe-frontend",
+  "version": "1.0.0",
+  "description": "QuantumSafe frontend - Post-quantum cryptography scanner",
+  "private": true,
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "build": "echo 'No build step required for static site'"
+  },
+  "dependencies": {
+    "@vercel/analytics": "^1.4.1"
+  }
+}
