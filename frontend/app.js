@@ -226,36 +226,36 @@
     initScoreCycle();
   }
 
-  // Sample files for the cycling "code → score" demo. Each is scored live by
-  // the real in-browser engine (scanDemo), so the numbers are never faked —
-  // they range from a low-risk hashing file up to a critical payments file.
+  // Each sample is a different language — the scanner covers 11, and the demo
+  // shows it (JavaScript, Go, Java, Ruby here). scanDemo matches the crypto
+  // tokens regardless of syntax, so the live scores are real.
   const CYCLE_SNIPPETS = [
-    { file: "session_crypto.py", code:
-      "# modern-ish session crypto\n" +
-      "digest = hashlib.sha256(data)   # SHA-256\n" +
-      "sig = hmac.new(key, msg, sha256)   # SHA-256\n" +
-      "box = AES.new(k, AES.MODE_GCM)   # AES-128\n" },
-    { file: "legacy_tls.py", code:
-      "# legacy transport + ciphers\n" +
-      "ctx = ssl.SSLContext(PROTOCOL_TLSv1)   # TLS 1.0\n" +
-      "c = Cipher(TripleDES(key))   # 3DES\n" +
-      "mac = hmac.new(key, msg, sha1)   # SHA-1\n" +
-      "tok = hashlib.md5(user_id)   # MD5\n" },
-    { file: "keys.py", code:
-      "# API key generation\n" +
-      "rsa_key = rsa.generate_private_key(2048)   # RSA\n" +
-      "ec_key = ec.generate_private_key(SECP256R1)   # ECC\n" +
-      "dsa_key = dsa.generate_private_key(2048)   # DSA\n" +
-      "md5sum = hashlib.md5(blob)   # MD5\n" +
-      "sha1sig = hashlib.sha1(blob)   # SHA-1\n" },
-    { file: "payments.py", code:
-      "# payment tokens — harvest-now, decrypt-later\n" +
-      "rsa_key = rsa.generate_private_key(2048)   # RSA\n" +
-      "ec_key = ec.generate_private_key(SECP256R1)   # ECC\n" +
-      "dh = DiffieHellman(group=14)   # Diffie-Hellman\n" +
-      "dsa_key = dsa.generate_private_key(2048)   # DSA\n" +
-      "md5 = hashlib.md5(card_no)   # MD5\n" +
-      "sha1 = hashlib.sha1(card_no)   # SHA-1\n" },
+    { file: "session.js", code:
+      "// Node.js session crypto\n" +
+      "const h = crypto.createHash('sha256')     // SHA-256\n" +
+      "const mac = crypto.createHmac('sha256')   // SHA-256\n" +
+      "const c = crypto.createCipheriv('aes-128-gcm')  // AES-128\n" },
+    { file: "transport.go", code:
+      "// legacy transport + ciphers (Go)\n" +
+      "cfg := &tls.Config{MinVersion: tls.VersionTLS10}  // TLSv1\n" +
+      "blk, _ := des.NewTripleDESCipher(key)  // 3DES\n" +
+      "h := sha1.New()   // SHA-1\n" +
+      "sum := md5.Sum(payload)   // MD5\n" },
+    { file: "Keys.java", code:
+      "// key generation (Java)\n" +
+      "KeyPairGenerator.getInstance(\"RSA\")   // RSA\n" +
+      "KeyPairGenerator.getInstance(\"EC\")    // ECDSA secp256r1\n" +
+      "Signature.getInstance(\"SHA1withDSA\")  // DSA\n" +
+      "MessageDigest.getInstance(\"MD5\")      // MD5\n" +
+      "MessageDigest.getInstance(\"SHA-1\")    // SHA-1\n" },
+    { file: "payments.rb", code:
+      "# payment tokens — harvest-now, decrypt-later (Ruby)\n" +
+      "key = OpenSSL::PKey::RSA.new(2048)        # RSA\n" +
+      "ec  = OpenSSL::PKey::EC.new('secp256r1')  # ECC\n" +
+      "dh  = OpenSSL::PKey::DH.new(2048)         # Diffie-Hellman\n" +
+      "dsa = OpenSSL::PKey::DSA.new(2048)        # DSA\n" +
+      "md  = OpenSSL::Digest::MD5.new            # MD5\n" +
+      "sh  = OpenSSL::Digest::SHA1.new           # SHA-1\n" },
   ];
 
   // Cycling "code in → Quantum Risk Score out" demo (mirrors the README's top
