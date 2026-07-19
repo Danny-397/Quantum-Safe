@@ -30,7 +30,7 @@ def scan_repo_url(url: str) -> dict:
     URL validation / sanitization happens inside quantumsafe.scanner.scan_repo
     (https-only github.com, no traversal), which raises ValueError on bad input.
     """
-    findings = scan_repo(url)
+    findings = scan_repo(url, scan_deps=True, reachability=True)
     return build_report(findings, url)
 
 
@@ -52,7 +52,7 @@ def scan_upload(file_storage) -> dict:
         os.makedirs(extract_dir, exist_ok=True)
         _safe_extract(zip_path, extract_dir)
 
-        findings = scan_path(extract_dir)
+        findings = scan_path(extract_dir, scan_deps=True, reachability=True)
         return build_report(findings, filename)
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)

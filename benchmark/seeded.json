@@ -1,0 +1,110 @@
+{
+  "generated_at": "2026-07-19 03:12 UTC",
+  "total": 50,
+  "detected": 50,
+  "recall": 1.0,
+  "decoys": 50,
+  "decoy_false_positives": 0,
+  "decoy_precision": 1.0,
+  "by_language": {
+    "python": {
+      "n": 12,
+      "hit": 12,
+      "recall": 1.0
+    },
+    "javascript": {
+      "n": 10,
+      "hit": 10,
+      "recall": 1.0
+    },
+    "java": {
+      "n": 8,
+      "hit": 8,
+      "recall": 1.0
+    },
+    "go": {
+      "n": 7,
+      "hit": 7,
+      "recall": 1.0
+    },
+    "ruby": {
+      "n": 5,
+      "hit": 5,
+      "recall": 1.0
+    },
+    "php": {
+      "n": 4,
+      "hit": 4,
+      "recall": 1.0
+    },
+    "csharp": {
+      "n": 4,
+      "hit": 4,
+      "recall": 1.0
+    }
+  },
+  "by_family": {
+    "md5": {
+      "n": 8,
+      "hit": 8,
+      "recall": 1.0
+    },
+    "sha1": {
+      "n": 7,
+      "hit": 7,
+      "recall": 1.0
+    },
+    "sha256": {
+      "n": 3,
+      "hit": 3,
+      "recall": 1.0
+    },
+    "rsa": {
+      "n": 7,
+      "hit": 7,
+      "recall": 1.0
+    },
+    "ecc": {
+      "n": 4,
+      "hit": 4,
+      "recall": 1.0
+    },
+    "dsa": {
+      "n": 4,
+      "hit": 4,
+      "recall": 1.0
+    },
+    "dh": {
+      "n": 2,
+      "hit": 2,
+      "recall": 1.0
+    },
+    "3des": {
+      "n": 6,
+      "hit": 6,
+      "recall": 1.0
+    },
+    "rc4": {
+      "n": 5,
+      "hit": 5,
+      "recall": 1.0
+    },
+    "tls_old": {
+      "n": 2,
+      "hit": 2,
+      "recall": 1.0
+    },
+    "tls12": {
+      "n": 1,
+      "hit": 1,
+      "recall": 1.0
+    },
+    "aes128": {
+      "n": 1,
+      "hit": 1,
+      "recall": 1.0
+    }
+  },
+  "misses": [],
+  "decoy_fp_cases": []
+}

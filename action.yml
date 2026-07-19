@@ -22,6 +22,15 @@ inputs:
     description: "Fail the job if any HIGH-risk finding is present."
     required: false
     default: "false"
+  version:
+    description: "Version of quantumsafe-scan to install (e.g. 0.2.0). Default: latest."
+    required: false
+    default: ""
+
+outputs:
+  sarif-file:
+    description: "Path to the SARIF report produced by the scan."
+    value: "${{ inputs.output }}"
 
 runs:
   using: "composite"
@@ -32,12 +41,17 @@ runs:
 
     - name: Install QuantumSafe
       shell: bash
-      run: pip install quantumsafe-scan
+      run: |
+        if [ -n "${{ inputs.version }}" ]; then
+          pip install --upgrade "quantumsafe-scan==${{ inputs.version }}"
+        else
+          pip install --upgrade quantumsafe-scan
+        fi
 
     - name: Run QuantumSafe scan
       shell: bash
       run: |
-        ARGS=(scan --path "${{ inputs.path }}" --output "${{ inputs.output }}")
+        ARGS=(scan --path "${{ inputs.path }}" --output "${{ inputs.output }}" --no-sync)
         if [ "${{ inputs.fail-on-high }}" = "true" ]; then ARGS+=(--fail-on-high); fi
         IFS=',' read -ra EX <<< "${{ inputs.exclude }}"
         for g in "${EX[@]}"; do [ -n "$g" ] && ARGS+=(--exclude "$g"); done

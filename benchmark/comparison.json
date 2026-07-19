@@ -1,0 +1,48 @@
+{
+  "generated_at": "2026-07-19 03:34 UTC",
+  "ground_truth": 26,
+  "results": {
+    "QuantumSafe": {
+      "caught": 26,
+      "total": 26,
+      "recall": 1.0,
+      "families": [
+        "3des",
+        "aes128",
+        "dh",
+        "dsa",
+        "ecc",
+        "md5",
+        "rc4",
+        "rsa",
+        "sha1",
+        "sha256",
+        "tls_old"
+      ],
+      "file_types": [
+        ".cs",
+        ".go",
+        ".java",
+        ".js",
+        ".php",
+        ".py",
+        ".rb",
+        ".rs",
+        ".swift"
+      ]
+    },
+    "Bandit": {
+      "caught": 2,
+      "total": 26,
+      "recall": 0.07692307692307693,
+      "families": [
+        "md5",
+        "sha1"
+      ],
+      "file_types": [
+        ".py"
+      ]
+    },
+    "Semgrep": null
+  }
+}

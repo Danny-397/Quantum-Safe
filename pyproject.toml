@@ -4,24 +4,43 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "quantumsafe-scan"
-version = "0.1.0"
-description = "Scan codebases for quantum-vulnerable cryptography and generate a NIST-aligned migration plan."
+version = "0.2.0"
+description = "Scan codebases and dependencies for quantum-vulnerable cryptography and generate a NIST-aligned migration plan (SARIF + CycloneDX CBOM)."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [{ name = "QuantumSafe" }]
-keywords = ["quantum", "cryptography", "pqc", "nist", "security", "kyber", "dilithium"]
+keywords = [
+    "quantum", "post-quantum", "pqc", "cryptography", "nist", "security",
+    "kyber", "ml-kem", "dilithium", "ml-dsa", "sarif", "cbom", "cyclonedx",
+    "sast", "crypto-agility", "sbom",
+]
 classifiers = [
-    "Programming Language :: Python :: 3",
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
     "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Security :: Cryptography",
+    "Topic :: Software Development :: Quality Assurance",
+    "Typing :: Typed",
 ]
 dependencies = [
     "rich>=13.0",
 ]
 
 [project.urls]
-Homepage = "https://github.com/Danny-397/Quantum-Safe"
+Homepage = "https://github.com/Danny-397/Quantum-Safe-Scan"
+Repository = "https://github.com/Danny-397/Quantum-Safe-Scan"
+Issues = "https://github.com/Danny-397/Quantum-Safe-Scan/issues"
+Changelog = "https://github.com/Danny-397/Quantum-Safe-Scan/blob/main/CHANGELOG.md"
 
 [project.scripts]
 quantumsafe = "quantumsafe.cli:main"

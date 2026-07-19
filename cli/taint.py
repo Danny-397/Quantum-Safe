@@ -23,9 +23,10 @@ reachable from.
 
 Design + guardrails (in security tooling, precision is the product):
 
-* **Python only**, and analysis is **per-module** (within one file). Resolving
-  names across files needs full import resolution; keeping it intra-module
-  avoids false matches from unrelated functions that happen to share a name.
+* **Python only.** This module handles the **intra-module** case (wrapper and
+  call site in the same file). The companion :mod:`cli.callgraph` handles the
+  **cross-file** case with real import resolution, so the two compose: intra-file
+  wrappers here, cross-module wrappers there, with no double-reporting.
 * Taint roots must be **high-confidence** primitives — the same AST-detected
   calls the core scanner trusts — never a bare keyword mention.
 * An indirect finding is only emitted when the call-site line does **not**

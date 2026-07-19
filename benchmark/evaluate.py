@@ -22,9 +22,9 @@ from quantumsafe.scanner import scan_path  # noqa: E402
 BASE = os.path.dirname(os.path.abspath(__file__))
 
 
-def _score(labels: dict[str, list[str]], mask_python_strings: bool) -> dict:
+def _score(labels: dict[str, list[str]], mask_strings: bool) -> dict:
     detected: dict[str, set[str]] = {}
-    for f in scan_path(BASE, mask_python_strings=mask_python_strings):
+    for f in scan_path(BASE, mask_strings=mask_strings):
         if f.file_path in labels:
             detected.setdefault(f.file_path, set()).add(f.family)
 
@@ -47,8 +47,8 @@ def _score(labels: dict[str, list[str]], mask_python_strings: bool) -> dict:
 def evaluate() -> dict:
     labels: dict[str, list[str]] = json.load(open(os.path.join(BASE, "labels.json")))
     return {
-        "improved": _score(labels, mask_python_strings=True),
-        "naive": _score(labels, mask_python_strings=False),
+        "improved": _score(labels, mask_strings=True),
+        "naive": _score(labels, mask_strings=False),
         "files": len(labels),
         "positives": sum(1 for v in labels.values() if v),
         "negatives": sum(1 for v in labels.values() if not v),

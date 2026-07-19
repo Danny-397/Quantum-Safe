@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 from urllib.parse import urlparse
 
 from .recommender import recommend
+from .remediation import remediate
 
 # --------------------------------------------------------------------------- #
 # Data model
@@ -51,6 +52,17 @@ class Finding:
     # "high"  = precise AST match, or a match sitting on a real call/import line.
     # "medium" = a regex keyword match on a code line with no obvious usage signal.
     confidence: str = "medium"
+    # "source"     = detected in first-party source code.
+    # "dependency" = detected in a declared third-party dependency (see dependencies.py).
+    origin: str = "source"
+    component: str = ""   # dependency findings only: package name
+    version: str = ""     # dependency findings only: pinned version (if known)
+    purl: str = ""        # dependency findings only: package URL (purl)
+    scope: str = ""       # dependency findings only: "direct" | "transitive"
+    # Reachability ranking (see reachability.py): "reachable" | "test/example" |
+    # "unreferenced". Empty when ranking was not requested.
+    reachability: str = ""
+    fix: dict = field(default_factory=dict)  # call-site remediation (see remediation.py)
 
     def enrich(self) -> "Finding":
         rec = recommend(self.family)
@@ -59,6 +71,8 @@ class Finding:
         self.complexity = rec.complexity
         if not self.why:
             self.why = rec.detail
+        lang = EXT_TO_LANG.get(os.path.splitext(self.file_path)[1].lower(), "")
+        self.fix = remediate(self.family, lang, self.snippet).to_dict()
         return self
 
     def to_dict(self) -> dict:
@@ -74,6 +88,13 @@ class Finding:
             "complexity": self.complexity,
             "snippet": self.snippet,
             "confidence": self.confidence,
+            "origin": self.origin,
+            "component": self.component,
+            "version": self.version,
+            "purl": self.purl,
+            "scope": self.scope,
+            "reachability": self.reachability,
+            "fix": self.fix,
         }
 
 
@@ -346,6 +367,260 @@ def _mask_python_strings(source: str, lines: list[str]) -> list[str]:
     return ["".join(buf) for buf in masked]
 
 
+# --------------------------------------------------------------------------- #
+# Generic (non-Python) string/comment masking
+# --------------------------------------------------------------------------- #
+#
+# Python gets precise masking from the ``tokenize`` module above. Every other
+# language is handled by a small, lexer-style state machine that blanks the
+# *content* of comments and string literals (positions preserved) so the regex
+# engine ignores crypto keywords that live in prose — trailing comments, block
+# comments, log/exception messages — exactly the false positives the naive
+# line-regex baseline suffers from. Genuine string-argument usage (e.g. Java's
+# ``getInstance("SHA-1")``) is recovered separately by ``_string_arg_scan``,
+# which mirrors the role the Python AST engine plays.
+
+
+@dataclass
+class _LexConfig:
+    line_comments: tuple[str, ...]
+    block: tuple[str, str] | None   # (open, close) or None if unsupported
+    strings: tuple[str, ...]        # quote characters that open a string
+    backtick: bool                  # backtick template/raw string (JS, Go)
+    mask_string_content: bool       # blank string interiors (all supported langs)
+    import_aware: bool = False      # preserve strings on import lines (Go)
+
+
+# Go is special: its import paths ("crypto/dsa", "crypto/ecdsa") are *string
+# literals* the rules must still read. So Go masks string content everywhere
+# EXCEPT on import lines (``import_aware``), which keeps import-based detection
+# while still removing crypto keywords that appear in ordinary Go strings.
+_LEX: dict[str, _LexConfig] = {
+    "javascript": _LexConfig(("//",), ("/*", "*/"), ('"', "'"), True, True),
+    "java":       _LexConfig(("//",), ("/*", "*/"), ('"', "'"), False, True),
+    "csharp":     _LexConfig(("//",), ("/*", "*/"), ('"', "'"), False, True),
+    "c":          _LexConfig(("//",), ("/*", "*/"), ('"', "'"), False, True),
+    "cpp":        _LexConfig(("//",), ("/*", "*/"), ('"', "'"), False, True),
+    "rust":       _LexConfig(("//",), ("/*", "*/"), ('"',), False, True),
+    "kotlin":     _LexConfig(("//",), ("/*", "*/"), ('"', "'"), False, True),
+    "swift":      _LexConfig(("//",), ("/*", "*/"), ('"',), False, True),
+    "php":        _LexConfig(("//", "#"), ("/*", "*/"), ('"', "'"), False, True),
+    "ruby":       _LexConfig(("#",), None, ('"', "'"), False, True),
+    "go":         _LexConfig(("//",), ("/*", "*/"), ('"', "'"), True, True, import_aware=True),
+}
+
+# Languages whose string literals are masked, and therefore need the
+# string-argument recovery pass to keep their genuine crypto usages.
+_STRING_MASK_LANGS = {k for k, v in _LEX.items() if v.mask_string_content}
+
+
+def _mask_generic(lines: list[str], cfg: _LexConfig) -> list[str]:
+    """Blank comment/string content across ``lines`` using a small state machine.
+
+    Handles line comments (including trailing), block comments spanning lines,
+    and single/backtick string literals with backslash escapes. For
+    ``import_aware`` languages (Go), string content on import lines is preserved
+    so import-path detection keeps working. Robust by design: anything it cannot
+    classify is left as code, so a parse quirk can only cost precision, never a
+    crash.
+    """
+    out: list[str] = []
+    state = "code"          # "code" | "block" | "string"
+    delim = ""              # active string delimiter when state == "string"
+    in_import = False       # inside a Go `import ( ... )` block
+    for line in lines:
+        buf = list(line)
+        # Decide whether string content is masked on THIS line.
+        mask_str = cfg.mask_string_content
+        if cfg.import_aware and state != "block":
+            stripped = line.strip()
+            if stripped.startswith("import ("):
+                in_import = True
+            if in_import or stripped.startswith("import "):
+                mask_str = False
+            if in_import and stripped.startswith(")"):
+                in_import = False
+        i, n = 0, len(line)
+        while i < n:
+            if state == "code":
+                if cfg.block and line.startswith(cfg.block[0], i):
+                    state = "block"
+                    _blank(buf, i, i + len(cfg.block[0]))
+                    i += len(cfg.block[0])
+                    continue
+                if any(line.startswith(lc, i) for lc in cfg.line_comments):
+                    _blank(buf, i, n)   # trailing/whole-line comment → EOL
+                    i = n
+                    continue
+                ch = line[i]
+                if ch in cfg.strings or (cfg.backtick and ch == "`"):
+                    state, delim = "string", ch
+                    if mask_str:
+                        buf[i] = " "
+                    i += 1
+                    continue
+                i += 1
+            elif state == "block":
+                assert cfg.block is not None
+                if line.startswith(cfg.block[1], i):
+                    _blank(buf, i, i + len(cfg.block[1]))
+                    i += len(cfg.block[1])
+                    state = "code"
+                    continue
+                buf[i] = " "
+                i += 1
+            else:  # state == "string"
+                ch = line[i]
+                if ch == "\\" and delim != "`":   # escape (not in raw backtick)
+                    if mask_str:
+                        _blank(buf, i, min(i + 2, n))
+                    i += 2
+                    continue
+                if ch == delim:
+                    if mask_str:
+                        buf[i] = " "
+                    state, delim = "code", ""
+                    i += 1
+                    continue
+                if mask_str:
+                    buf[i] = " "
+                i += 1
+        # Line comments and (non-backtick) strings do not continue across lines.
+        if state == "string" and delim != "`":
+            state, delim = "code", ""
+        out.append("".join(buf))
+    return out
+
+
+def _blank(buf: list[str], start: int, end: int) -> None:
+    for c in range(start, min(end, len(buf))):
+        buf[c] = " "
+
+
+# --------------------------------------------------------------------------- #
+# String-argument recovery (non-Python analogue of the Python AST engine)
+# --------------------------------------------------------------------------- #
+#
+# Once string literals are masked, usages that name the algorithm *inside* a
+# string — Java's ``MessageDigest.getInstance("SHA-1")``, Node's
+# ``crypto.createCipheriv("aes-128-gcm", ...)`` — would be lost. This pass finds
+# them on the original source, but only when (a) the callee is a known crypto
+# factory and (b) the argument normalizes to a recognized algorithm token, so it
+# stays precise and never re-introduces the prose false positives masking removed.
+
+_FACTORY_ARG_RE = re.compile(
+    r"(?P<caller>createHash|createHmac|createCipheriv|createDecipheriv|createCipher"
+    r"|createDecipher|generateKeyPairSync|generateKeyPair|getInstance|CreateFromName"
+    r"|Digest\.new|Cipher\.new|hash)\s*\(\s*['\"](?P<arg>[^'\"]+)['\"]",
+    re.IGNORECASE,
+)
+
+# Unambiguous protocol constants — never appear in prose, so they are safe to
+# recover from a string literal on sight (subject to a comment check).
+_TLS_TOKEN_RE = [
+    (re.compile(r"\b(?:TLSv1(?:_1)?_method|SSLv3_method|SSLv23_method"
+                r"|PROTOCOL_TLSv1(?:_1)?|TLS1_0|TLS1_1)\b|\bSSLv3\b"), "tls_old"),
+    (re.compile(r"\b(?:TLSv1_2_method|PROTOCOL_TLSv1_2|TLS1_2)\b"), "tls12"),
+]
+
+# family -> (algorithm label, risk, why) for recovered findings.
+_ALGO_INFO: dict[str, tuple[str, str, str]] = {
+    "rsa": ("RSA", RISK_HIGH, "RSA public-key cryptography is broken by Shor's algorithm."),
+    "ecc": ("ECC", RISK_HIGH, "Elliptic-curve cryptography is broken by Shor's algorithm."),
+    "dsa": ("DSA", RISK_HIGH, "DSA signatures are broken by Shor's algorithm."),
+    "dh": ("Diffie-Hellman", RISK_HIGH, "Classic Diffie-Hellman key exchange is broken by Shor's algorithm."),
+    "md5": ("MD5", RISK_HIGH, "MD5 is collision-broken and weakened by Grover's algorithm."),
+    "sha1": ("SHA-1", RISK_HIGH, "SHA-1 is collision-broken and weakened by Grover's algorithm."),
+    "sha256": ("SHA-256", RISK_LOW, "Grover's algorithm weakens SHA-256 to ~128-bit security (still safe)."),
+    "3des": ("3DES / Triple DES", RISK_MEDIUM, "3DES is deprecated; Grover's algorithm halves its effective strength."),
+    "rc4": ("RC4", RISK_MEDIUM, "RC4 is insecure and prohibited in TLS."),
+    "aes128": ("AES-128", RISK_LOW, "Grover's algorithm halves AES-128 to ~64-bit security."),
+    "tls_old": ("TLS 1.0/1.1", RISK_MEDIUM, "Deprecated TLS versions use quantum-vulnerable key exchange."),
+    "tls12": ("TLS 1.2", RISK_LOW, "TLS 1.2 still relies on classical key exchange."),
+}
+
+
+def _map_algo_string(s: str) -> str | None:
+    """Map a crypto factory's string argument to a detection family, or None.
+
+    Rejects anything with whitespace (prose, not an algorithm identifier) and
+    keys off the first path segment so Java transformations like
+    ``DESede/CBC/PKCS5Padding`` resolve to their cipher.
+    """
+    s = s.strip()
+    if not s or " " in s or "\t" in s:
+        return None
+    norm = re.sub(r"[-_]", "", s.split("/")[0]).lower()
+    if norm.startswith("aes128") or re.fullmatch(r"aes128.*", norm):
+        return "aes128"
+    if norm.startswith("desede") or norm in ("des3", "3des", "tripledes"):
+        return "3des"
+    if norm in ("rc4", "arc4"):
+        return "rc4"
+    if norm == "md5":
+        return "md5"
+    if norm in ("sha1", "sha1withrsa", "sha1withdsa"):
+        return "sha1"
+    if norm == "sha256":
+        return "sha256"
+    if norm == "rsa":
+        return "rsa"
+    if norm in ("ec", "ecc", "ecdsa", "ecdh"):
+        return "ecc"
+    if norm == "dsa":
+        return "dsa"
+    if norm in ("dh", "diffiehellman"):
+        return "dh"
+    return None
+
+
+def _string_arg_scan(orig_lines: list[str], masked_lines: list[str],
+                     lang: str, rel_path: str) -> list[Finding]:
+    """Recover crypto usages whose algorithm is named inside a string literal.
+
+    Runs on the original source but uses the masked line to confirm the code is
+    real: if the callee/token position was blanked, it lived in a comment or an
+    outer string and is ignored.
+    """
+    findings: list[Finding] = []
+    for idx, orig in enumerate(orig_lines):
+        masked = masked_lines[idx] if idx < len(masked_lines) else orig
+        snippet = orig.strip()
+
+        for m in _FACTORY_ARG_RE.finditer(orig):
+            start = m.start("caller")
+            if start < len(masked) and masked[start] == " ":
+                continue  # callee was inside a comment/string → not real code
+            family = _map_algo_string(m.group("arg"))
+            if family:
+                algo, risk, why = _ALGO_INFO[family]
+                findings.append(Finding(rel_path, idx + 1, algo, risk, why, family,
+                                        snippet=snippet, confidence="high"))
+
+        # Protocol constants living in string values (e.g. secureProtocol).
+        comment_cut = _comment_start(orig, lang)
+        for token_re, family in _TLS_TOKEN_RE:
+            tm = token_re.search(orig)
+            if tm and (comment_cut is None or tm.start() < comment_cut):
+                algo, risk, why = _ALGO_INFO[family]
+                findings.append(Finding(rel_path, idx + 1, algo, risk, why, family,
+                                        snippet=snippet, confidence="high"))
+    return findings
+
+
+def _comment_start(line: str, lang: str) -> int | None:
+    """Column where a line comment begins, or None. Used to reject trailing-comment
+    matches without a full re-lex (the protocol tokens are the only consumer)."""
+    best: int | None = None
+    for marker in _LINE_COMMENT.get(lang, ()):
+        if marker in ("/*", "*"):
+            continue
+        pos = line.find(marker)
+        if pos != -1 and (best is None or pos < best):
+            best = pos
+    return best
+
+
 # A match sits on "real usage" when its line looks like a call, an import, or a
 # known crypto constructor — as opposed to a bare keyword mention.
 _USAGE_SIGNAL = re.compile(
@@ -402,7 +677,7 @@ def _dedupe(findings: list[Finding]) -> list[Finding]:
 # --------------------------------------------------------------------------- #
 
 
-def scan_file(abs_path: str, rel_path: str, mask_python_strings: bool = True,
+def scan_file(abs_path: str, rel_path: str, mask_strings: bool = True,
               taint: bool = False) -> list[Finding]:
     ext = os.path.splitext(abs_path)[1].lower()
     lang = EXT_TO_LANG.get(ext)
@@ -419,12 +694,19 @@ def scan_file(abs_path: str, rel_path: str, mask_python_strings: bool = True,
     lines = source.splitlines()
     if _looks_minified(os.path.basename(abs_path), lines):
         return []
-    # Python: mask string/comment content so the regex engine ignores keywords in
-    # docstrings/log strings; the AST engine still runs on the original source.
-    if lang == "python" and mask_python_strings:
-        match_lines = _mask_python_strings(source, lines)
+
+    # Usage-awareness: mask string/comment *content* so the regex engine ignores
+    # crypto keywords that live in prose. Python uses precise tokenizer masking
+    # plus the AST engine; every other language uses the generic lexer masker
+    # plus the string-argument recovery pass (its AST-engine analogue).
+    cfg = _LEX.get(lang)
+    if lang == "python":
+        match_lines = _mask_python_strings(source, lines) if mask_strings else lines
+    elif mask_strings and cfg is not None:
+        match_lines = _mask_generic(lines, cfg)
     else:
         match_lines = lines
+
     findings = _regex_scan(match_lines, lines, lang, rel_path)
     if lang == "python":
         findings += _ast_scan_python(source, rel_path, lines)
@@ -432,6 +714,10 @@ def scan_file(abs_path: str, rel_path: str, mask_python_strings: bool = True,
             # Interprocedural data-flow pass: crypto reached through wrappers.
             from .taint import taint_scan_python
             findings += taint_scan_python(source, rel_path, lines)
+    elif mask_strings and lang in _STRING_MASK_LANGS:
+        # Recover genuine crypto usages whose algorithm was named inside a
+        # (now-masked) string literal — e.g. getInstance("SHA-1").
+        findings += _string_arg_scan(lines, match_lines, lang, rel_path)
 
     # Honor inline suppressions: a line containing "quantumsafe: ignore".
     if findings:
@@ -454,15 +740,22 @@ def _is_excluded(rel_path: str, patterns: list[str] | None) -> bool:
 
 
 def scan_path(path: str, exclude: list[str] | None = None,
-              mask_python_strings: bool = True, taint: bool = False) -> list[Finding]:
+              mask_strings: bool = True, taint: bool = False,
+              scan_deps: bool = False, reachability: bool = False) -> list[Finding]:
     """Recursively scan a local directory (or single file) for vulnerabilities.
 
     ``exclude`` is an optional list of glob patterns (matched against the path
-    relative to ``path``, using forward slashes) to skip. ``mask_python_strings``
-    (default on) enables the string/comment-aware pass; set it False to measure
-    the naive line-regex baseline (used by the benchmark). ``taint`` (default
-    off) enables the experimental interprocedural data-flow pass that also flags
-    quantum-vulnerable crypto reached through Python wrapper functions.
+    relative to ``path``, using forward slashes) to skip. ``mask_strings``
+    (default on) enables the string/comment-aware pass across all languages; set
+    it False to measure the naive line-regex baseline (used by the benchmark).
+    ``taint`` (default off) enables the experimental interprocedural data-flow
+    pass for Python wrapper functions. ``scan_deps`` (default off) additionally
+    inspects declared dependency manifests (requirements.txt, package.json,
+    go.mod, pom.xml, Gemfile, pyproject.toml) plus their lockfiles for
+    quantum-vulnerable crypto libraries, producing dependency-origin findings for
+    the CBOM. ``reachability`` (default off) labels each source finding as
+    ``reachable`` / ``test/example`` / ``unreferenced`` so reports can rank
+    exploitable findings above noise.
     """
     path = os.path.abspath(path)
     if not os.path.exists(path):
@@ -470,7 +763,7 @@ def scan_path(path: str, exclude: list[str] | None = None,
 
     findings: list[Finding] = []
     if os.path.isfile(path):
-        findings = scan_file(path, os.path.basename(path), mask_python_strings, taint)
+        findings = scan_file(path, os.path.basename(path), mask_strings, taint)
     else:
         for root, dirs, files in os.walk(path):
             dirs[:] = [d for d in dirs if d not in _SKIP_DIRS]
@@ -479,11 +772,24 @@ def scan_path(path: str, exclude: list[str] | None = None,
                 rel_path = os.path.relpath(abs_path, path).replace(os.sep, "/")
                 if _is_excluded(rel_path, exclude):
                     continue
-                findings.extend(scan_file(abs_path, rel_path, mask_python_strings, taint))
+                findings.extend(scan_file(abs_path, rel_path, mask_strings, taint))
+
+    if taint and os.path.isdir(path):
+        # Whole-program pass: crypto reached through a wrapper in *another* file.
+        # (The per-file pass above handles intra-module wrappers.)
+        from .callgraph import cross_file_taint
+        findings.extend(cross_file_taint(path))
+
+    if scan_deps and os.path.isdir(path):
+        from .dependencies import scan_dependencies
+        findings.extend(scan_dependencies(path, exclude=exclude))
 
     findings = _dedupe(findings)
     for f in findings:
         f.enrich()
+    if reachability:
+        from .reachability import annotate_reachability
+        annotate_reachability(findings, path)
     return findings
 
 
@@ -503,7 +809,8 @@ def _validate_repo_url(url: str) -> str:
     return url
 
 
-def scan_repo(url: str, exclude: list[str] | None = None, taint: bool = False) -> list[Finding]:
+def scan_repo(url: str, exclude: list[str] | None = None, taint: bool = False,
+              scan_deps: bool = False, reachability: bool = False) -> list[Finding]:
     """Shallow-clone a public GitHub repo to a temp dir, scan it, then clean up."""
     url = _validate_repo_url(url)
     if shutil.which("git") is None:
@@ -517,6 +824,7 @@ def scan_repo(url: str, exclude: list[str] | None = None, taint: bool = False) -
         )
         if result.returncode != 0:
             raise RuntimeError(f"Failed to clone repository: {result.stderr.strip()}")
-        return scan_path(tmp, exclude=exclude, taint=taint)
+        return scan_path(tmp, exclude=exclude, taint=taint, scan_deps=scan_deps,
+                         reachability=reachability)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

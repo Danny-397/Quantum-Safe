@@ -13,5 +13,8 @@
   "negative/comments.js": [],
   "negative/decoys.go": [],
   "negative/logs.py": [],
-  "negative/docs.py": []
+  "negative/docs.py": [],
+  "negative/notes.java": [],
+  "negative/messages.js": [],
+  "negative/notes.go": []
 }

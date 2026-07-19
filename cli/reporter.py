@@ -15,6 +15,8 @@ from .scanner import RISK_HIGH, RISK_LOW, RISK_MEDIUM, Finding
 from .scorer import band_message, calculate_score, count_by_severity, risk_band
 
 _RISK_ORDER = {RISK_HIGH: 0, RISK_MEDIUM: 1, RISK_LOW: 2}
+# Reachability ranking: reachable/unlabeled first, then test/example, then dead code.
+_REACH_ORDER = {"reachable": 0, "": 0, "test/example": 1, "unreferenced": 2}
 _RISK_COLOR = {RISK_HIGH: "red", RISK_MEDIUM: "yellow", RISK_LOW: "green"}
 _BAND_COLOR = {"Low": "green", "Medium": "yellow", "High": "red", "Critical": "red"}
 
@@ -24,9 +26,13 @@ def build_report(findings: list[Finding], target: str) -> dict:
     score = calculate_score(findings)
     band = risk_band(score)
     counts = count_by_severity(findings)
+    # Rank by risk, then by reachability (exploitable findings surface first when
+    # reachability ranking was requested), then by location for stable output.
     ordered = sorted(
         findings,
-        key=lambda f: (_RISK_ORDER.get(f.risk_level, 9), f.file_path, f.line_number),
+        key=lambda f: (_RISK_ORDER.get(f.risk_level, 9),
+                       _REACH_ORDER.get(f.reachability, 0),
+                       f.file_path, f.line_number),
     )
     return {
         "tool": "quantumsafe",
@@ -93,13 +99,26 @@ def print_terminal(report: dict) -> None:
     for f in report["findings"]:
         rc = _RISK_COLOR.get(f["risk_level"], "white")
         table.add_row(
-            f["file_path"],
+            _location(f),
             str(f["line_number"]),
             f["algorithm"],
             f"[{rc}]{f['risk_level']}[/{rc}]",
             f["recommendation"],
         )
     console.print(table)
+
+
+def _location(f: dict) -> str:
+    """File location, annotated with the package name for dependency findings so
+    a library's *capability* exposure is never mistaken for first-party usage."""
+    if f.get("origin") == "dependency" and f.get("component"):
+        scope = f.get("scope")
+        tag = f"dep: {f['component']}" + (f", {scope}" if scope else "")
+        return f"{f['file_path']} [{tag}]"
+    reach = f.get("reachability")
+    if reach in ("test/example", "unreferenced"):
+        return f"{f['file_path']} [{reach}]"
+    return f["file_path"]
 
 
 def _print_plain(report: dict) -> None:
@@ -109,7 +128,7 @@ def _print_plain(report: dict) -> None:
           f"LOW={report['summary']['low']} TOTAL={report['summary']['total_findings']}")
     print("-" * 80)
     for f in report["findings"]:
-        print(f"{f['risk_level']:<6} {f['file_path']}:{f['line_number']}  "
+        print(f"{f['risk_level']:<6} {_location(f)}:{f['line_number']}  "
               f"{f['algorithm']} -> {f['recommendation']}")
 
 
@@ -138,22 +157,31 @@ _CBOM_PRIMITIVE = {
 def to_cbom(report: dict) -> str:
     """Render findings as a CycloneDX 1.6 Cryptography Bill of Materials (CBOM).
 
-    Groups detected algorithms into ``cryptographic-asset`` components with the
-    file/line occurrences as evidence. This is the format enterprises are
-    beginning to require for post-quantum readiness reporting.
+    Detected algorithms become ``cryptographic-asset`` components with their
+    file/line occurrences as evidence. Quantum-vulnerable third-party packages
+    (``origin == "dependency"``) additionally become ``library`` components
+    carrying a package URL (purl), and a ``dependencies`` graph links each
+    library to the crypto assets it provides — so the CBOM captures not just the
+    algorithms a project names but the libraries that ship them, which is what
+    post-quantum inventory (NIST IR 8547) actually asks for.
     """
-    # Group findings by algorithm so each component lists all its occurrences.
-    groups: dict[str, dict] = {}
-    for f in report["findings"]:
-        g = groups.setdefault(f["algorithm"], {"finding": f, "occ": []})
+    findings = report["findings"]
+
+    # 1. Algorithm crypto-assets, grouped by algorithm across both origins.
+    algo_groups: dict[str, dict] = {}
+    for f in findings:
+        g = algo_groups.setdefault(f["algorithm"], {"finding": f, "occ": []})
         g["occ"].append({"location": f["file_path"], "line": f["line_number"]})
 
-    components = []
-    for i, (algo, g) in enumerate(groups.items()):
+    components: list[dict] = []
+    algo_ref: dict[str, str] = {}
+    for i, (algo, g) in enumerate(algo_groups.items()):
         f = g["finding"]
+        ref = f"crypto-{i}"
+        algo_ref[algo] = ref
         components.append({
             "type": "cryptographic-asset",
-            "bom-ref": f"crypto-{i}",
+            "bom-ref": ref,
             "name": algo,
             "cryptoProperties": {
                 "assetType": "algorithm",
@@ -170,6 +198,52 @@ def to_cbom(report: dict) -> str:
             ],
         })
 
+    # 2. Dependency libraries, grouped by purl (falling back to name@version).
+    lib_groups: dict[str, dict] = {}
+    for f in findings:
+        if f.get("origin") != "dependency":
+            continue
+        key = f.get("purl") or f"{f.get('component', '')}@{f.get('version', '')}"
+        lib = lib_groups.setdefault(key, {
+            "component": f.get("component", ""),
+            "version": f.get("version", ""),
+            "purl": f.get("purl", ""),
+            "scope": f.get("scope", ""),
+            "risk": f["risk_level"],
+            "algos": set(),
+            "occ": [],
+        })
+        lib["algos"].add(f["algorithm"])
+        lib["occ"].append({"location": f["file_path"], "line": f["line_number"]})
+        if _RISK_ORDER.get(f["risk_level"], 9) < _RISK_ORDER.get(lib["risk"], 9):
+            lib["risk"] = f["risk_level"]
+
+    dependencies: list[dict] = []
+    for j, (_key, lib) in enumerate(lib_groups.items()):
+        ref = f"lib-{j}"
+        comp: dict = {
+            "type": "library",
+            "bom-ref": ref,
+            "name": lib["component"],
+            "evidence": {"occurrences": lib["occ"]},
+            "properties": [
+                {"name": "quantumsafe:origin", "value": "dependency"},
+                {"name": "quantumsafe:scope", "value": lib["scope"] or "direct"},
+                {"name": "quantumsafe:risk", "value": lib["risk"]},
+                {"name": "quantumsafe:providesQuantumVulnerable",
+                 "value": ", ".join(sorted(lib["algos"]))},
+            ],
+        }
+        if lib["version"]:
+            comp["version"] = lib["version"]
+        if lib["purl"]:
+            comp["purl"] = lib["purl"]
+        components.append(comp)
+        # Link the library to the crypto-asset components it provides.
+        provides = sorted({algo_ref[a] for a in lib["algos"] if a in algo_ref})
+        if provides:
+            dependencies.append({"ref": ref, "provides": provides})
+
     cbom = {
         "bomFormat": "CycloneDX",
         "specVersion": "1.6",
@@ -184,6 +258,8 @@ def to_cbom(report: dict) -> str:
         },
         "components": components,
     }
+    if dependencies:
+        cbom["dependencies"] = dependencies
     return json.dumps(cbom, indent=2)
 
 
@@ -227,13 +303,19 @@ def to_sarif(report: dict) -> str:
         if f["family"] in seen:
             continue
         seen.add(f["family"])
+        fix = f.get("fix") or {}
+        help_text = f"{f['why']} Recommended replacement: {f['recommendation']} ({f['nist_reference']})."
+        if fix.get("action"):
+            help_text += f" Fix: {fix['action']}"
+            if fix.get("before") and fix.get("after"):
+                help_text += f" (e.g. `{fix['before']}` → `{fix['after']}`)"
         rules.append({
             "id": f["family"],
             "name": f["algorithm"],
             "shortDescription": {"text": f["algorithm"]},
             "fullDescription": {"text": f["why"]},
             "helpUri": "https://csrc.nist.gov/projects/post-quantum-cryptography",
-            "help": {"text": f"{f['why']} Recommended replacement: {f['recommendation']} ({f['nist_reference']})."},
+            "help": {"text": help_text},
             "defaultConfiguration": {"level": level_map.get(f["risk_level"], "warning")},
             "properties": {"security-severity": severity_map.get(f["risk_level"], "5.0")},
         })
@@ -268,6 +350,23 @@ def to_sarif(report: dict) -> str:
     return json.dumps(sarif, indent=2)
 
 
+def _fix_html(e, fix: dict | None) -> str:
+    """Render the call-site fix (before/after + guidance) beneath a recommendation."""
+    if not fix or not fix.get("action"):
+        return ""
+    tag = "drop-in fix" if fix.get("drop_in") else "migration"
+    parts = [f'<div class="fix"><span class="fixtag">{tag}</span> {e(fix["action"])}']
+    if fix.get("before") and fix.get("after"):
+        parts.append(
+            f'<div class="ba"><span class="minus mono">- {e(fix["before"])}</span>'
+            f'<span class="plus mono">+ {e(fix["after"])}</span></div>'
+        )
+    if fix.get("library"):
+        parts.append(f'<div class="muted">Library: {e(fix["library"])}</div>')
+    parts.append("</div>")
+    return "".join(parts)
+
+
 def to_html(report: dict) -> str:
     e = html.escape
     band = report["risk_band"]
@@ -280,12 +379,12 @@ def to_html(report: dict) -> str:
         rc = risk_hex.get(f["risk_level"], "#E0E0E0")
         rows.append(f"""
         <tr>
-          <td class="mono">{e(f['file_path'])}</td>
+          <td class="mono">{e(_location(f))}</td>
           <td class="mono num">{f['line_number']}</td>
           <td>{e(f['algorithm'])}</td>
           <td><span class="badge" style="color:{rc};border-color:{rc}">{e(f['risk_level'])}</span></td>
           <td>{e(f['why'])}</td>
-          <td>{e(f['recommendation'])}<br><span class="muted mono">{e(f['nist_reference'])} · Complexity: {e(f['complexity'])}</span></td>
+          <td>{e(f['recommendation'])}<br><span class="muted mono">{e(f['nist_reference'])} · Complexity: {e(f['complexity'])}</span>{_fix_html(e, f.get('fix'))}</td>
         </tr>""")
     rows_html = "".join(rows) or '<tr><td colspan="6" class="muted">No quantum-vulnerable cryptography detected.</td></tr>'
 
@@ -311,6 +410,10 @@ def to_html(report: dict) -> str:
   th, td {{ text-align:left; padding:10px 12px; border-bottom:1px solid #23232f; vertical-align:top; }}
   th {{ color:#9a9aae; font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.05em; }}
   .badge {{ border:1px solid; border-radius:4px; padding:2px 8px; font-size:12px; font-family:ui-monospace,monospace; }}
+  .fix {{ margin-top:8px; padding:8px 10px; background:#0e0e16; border:1px solid #23232f; border-radius:6px; font-size:12px; }}
+  .fixtag {{ display:inline-block; font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:#9a9aae; border:1px solid #33334a; border-radius:3px; padding:0 5px; margin-right:6px; }}
+  .ba {{ margin-top:6px; display:flex; flex-direction:column; gap:2px; }}
+  .ba .minus {{ color:#FF7A7A; }} .ba .plus {{ color:#00FF88; }}
   .footer {{ color:#7a7a8c; font-size:12px; margin-top:24px; }}
 </style>
 </head>

@@ -71,13 +71,17 @@ def cmd_scan(args: argparse.Namespace) -> int:
         return 2
 
     exclude = args.exclude or None
+    scan_deps = not args.no_deps
+    reachability = not args.no_rank
     try:
         if args.repo:
             target = args.repo
-            findings = scan_repo(args.repo, exclude=exclude, taint=args.taint)
+            findings = scan_repo(args.repo, exclude=exclude, taint=args.taint,
+                                 scan_deps=scan_deps, reachability=reachability)
         else:
             target = os.path.abspath(args.path)
-            findings = scan_path(args.path, exclude=exclude, taint=args.taint)
+            findings = scan_path(args.path, exclude=exclude, taint=args.taint,
+                                 scan_deps=scan_deps, reachability=reachability)
     except (FileNotFoundError, ValueError, RuntimeError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
@@ -179,7 +183,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_scan.add_argument("--taint", action="store_true",
                         help="Also run interprocedural data-flow analysis to flag "
                              "quantum-vulnerable crypto reached through Python wrapper "
-                             "functions (experimental).")
+                             "functions, across files via a whole-program call graph "
+                             "(experimental).")
+    p_scan.add_argument("--no-deps", action="store_true",
+                        help="Skip dependency scanning (manifests + lockfiles: "
+                             "requirements.txt, package.json, go.mod, pom.xml, Gemfile, "
+                             "pyproject.toml, package-lock.json, poetry.lock, go.sum, …). "
+                             "Dependency scanning is on by default.")
+    p_scan.add_argument("--no-rank", action="store_true",
+                        help="Skip reachability ranking (on by default): labels each "
+                             "source finding reachable / test-example / unreferenced so "
+                             "exploitable findings sort above dead or example code.")
     p_scan.add_argument("--fail-on-high", action="store_true",
                         help="Exit with code 1 if any HIGH-risk finding is present (for CI).")
     p_scan.add_argument("--no-sync", action="store_true",
