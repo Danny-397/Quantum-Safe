@@ -205,21 +205,36 @@ emits → the dashboard renders it.
 A good engineer knows what their tool *doesn't* do:
 
 - **Static, not semantic.** It flags *mentions* of algorithms, not whether they
-  are reachable, security-relevant, or already wrapped safely. False positives
-  (e.g. an `RSA` string in a comment in a non-Python file) and false negatives
-  (crypto via an unrecognized wrapper) are both possible.
+  are reachable, security-relevant, or already wrapped safely. False negatives
+  (crypto via an unrecognized wrapper) remain possible; false positives from
+  crypto names in comments/strings are now masked across all languages, not just
+  Python (see §2).
 - **No data-flow / taint analysis.** It can't tell a 2048-bit RSA key used for
   signing from one used for key transport, so signature-vs-KEM advice is offered
   jointly.
-- **Language coverage is pattern-based** outside Python; only Python gets AST
-  precision.
+- **Language coverage is pattern-based** outside Python: every language gets
+  usage-aware string/comment masking plus string-argument recovery, but only
+  Python gets full AST precision.
+- **Dependency findings are capability-level, not reachability-level:** a flagged
+  library ships quantum-vulnerable crypto, which is not proof a given call site
+  is exercised — hence `origin="dependency"`, `confidence="medium"`.
 - **Not a substitute for a professional cryptographic audit** — it's an
   awareness/triage tool.
 
 ## 6. Ecosystem integration (shipped)
 
 - **SARIF 2.1.0 output** (`--output report.sarif`) so findings load into GitHub's
-  code-scanning **Security tab**, with per-rule `security-severity`.
+  code-scanning **Security tab**, with per-rule `security-severity` and the
+  call-site fix in each rule's help text.
+- **CycloneDX 1.6 CBOM** with algorithm crypto-assets **and** dependency
+  `library` components (purl + direct/transitive scope) linked by a dependency
+  graph.
+- **Dependency + lockfile scanning** across pip/npm/go/maven/gem manifests and
+  their lockfiles (`package-lock.json`, `poetry.lock`, `go.sum`, …).
+- **Reachability ranking** (`reachable` / `test-example` / `unreferenced`) so
+  exploitable findings sort above dead or example code.
+- **Call-site remediation:** each finding carries a concrete before/after
+  (drop-ins) or a PQC migration pointer with a language-appropriate library.
 - **Reusable GitHub Action** (`action.yml`) + a self-scan workflow that uploads
   SARIF on every push.
 - **False-positive controls:** inline `# quantumsafe: ignore` suppression and
@@ -227,6 +242,8 @@ A good engineer knows what their tool *doesn't* do:
 
 ## 7. Possible future work
 
-- AST/Tree-sitter parsing for JS/Go/Java (precision across all languages).
-- CBOM (Cryptography Bill of Materials) export.
-- Reachability analysis to rank findings by exploitability.
+- AST/Tree-sitter parsing for JS/Go/Java (full precision across all languages).
+- Cross-file (import-resolving) reachability and taint, beyond the current
+  intra-module analysis.
+- A larger hand-labeled real-world corpus to complement the seeded recall
+  benchmark.

@@ -59,13 +59,13 @@ solution:
 | Layer | Module | What it does |
 |-------|--------|--------------|
 | **1. Attack** | [`quantum/`](quantum/) | Shor's and Grover's algorithms in **Qiskit**, run on a quantum simulator. At simulator scale Shor factors a small number and reconstructs a toy RSA key — an educational demonstration of *why* RSA/ECC are rated HIGH (not a break of real key sizes). |
-| **2. Detection** | [`cli/`](cli/) | A hybrid **AST + regex** static-analysis engine over 11 languages that scores risk and produces a NIST-aligned migration plan. **100% precision/recall on our labeled [benchmark](benchmark/)** (15 files, 26 findings) — see [methodology](benchmark/RESULTS.md). |
+| **2. Detection** | [`cli/`](cli/) | A hybrid **AST + regex** static-analysis engine over 11 languages, with cross-language usage-awareness, **dependency + lockfile scanning**, **reachability ranking**, and **call-site-specific fixes**, that scores risk and produces a NIST-aligned migration plan. **100% precision on the labeled [benchmark](benchmark/)** (18 files) and **100% recall on 50 seeded cases** — see [methodology](benchmark/RESULTS.md). |
 | **3. Fix** | [`pqc/`](pqc/) | A from-scratch **lattice (LWE) key-encapsulation mechanism** — the math behind CRYSTALS-Kyber / ML-KEM — so the recommended fix is runnable and provable. |
 
 The detection layer ships through three surfaces that share **one** engine:
 
 - A **free CLI** (`pip install quantumsafe-scan`) — scan local dirs or public GitHub
-  repos; export JSON / HTML / SARIF / CBOM / SVG badge.
+  repos (and their **dependency manifests**); export JSON / HTML / SARIF / CBOM / SVG badge.
 - A **Flask REST API** — powers the dashboard, ingests scans, handles auth.
 - A **dark, terminal-style web dashboard** — scan history, findings, migration
   plans, and exports. **Free, no paywall.**
@@ -180,11 +180,12 @@ score = min(100, 15*HIGH + 5*MEDIUM + 1*LOW)
 
 ## Evaluation (does the detector actually work?)
 
-The scanner is measured against a labeled [benchmark](benchmark/) of 15 files
+The scanner is measured against a labeled [benchmark](benchmark/) of 18 files
 across 9 languages, including adversarial decoys (crypto names in comments,
-docstrings, log strings, and word-boundary traps like `md5sumLabel`) designed to
-trip a naive matcher. `evaluate.py` runs the scanner twice — a naive line-regex
-baseline vs. the string/comment-aware engine — so the improvement is measured:
+docstrings, log strings, trailing/block comments, and word-boundary traps like
+`md5sumLabel`) designed to trip a naive matcher. `evaluate.py` runs the scanner
+twice — a naive line-regex baseline vs. the usage-aware engine — so the
+improvement is measured:
 
 ```bash
 python benchmark/evaluate.py
@@ -192,15 +193,25 @@ python benchmark/evaluate.py
 
 | Configuration | FP | Precision | Recall | F1 |
 |---|--:|--:|--:|--:|
-| Naive line-regex baseline | 14 | 65.0% | 100% | 78.8% |
+| Naive line-regex baseline | 27 | 49.1% | 100% | 65.8% |
 | **QuantumSafe (usage-aware)** | **0** | **100%** | **100%** | **100%** |
 
-Usage-awareness removes 14 false positives (keywords inside docstrings/log strings)
-without losing a true positive. `evaluate.py` prints the exact false
+Usage-awareness removes 27 false positives (crypto keywords inside comments,
+docstrings, and log/exception strings) without losing a true positive — and now
+across **all** supported languages, not just Python: genuine string-argument
+usages such as Java's `getInstance("SHA-1")` are preserved by a dedicated
+recovery pass. `evaluate.py` prints the exact false
 positives/negatives so the numbers are auditable, and the thresholds are enforced
-by `tests/test_benchmark.py`. Honest
-limits are documented in [benchmark/README.md](benchmark/README.md) and
-[benchmark/RESULTS.md](benchmark/RESULTS.md) — this is a regression benchmark, not
+by `tests/test_benchmark.py`.
+
+**Recall is measured too.** Because a small labeled corpus can't prove recall,
+`benchmark/seeded.py` runs a **mutation benchmark** with ground truth by
+construction — 50 real quantum-vulnerable API calls (many idiomatic variants
+per family, 7 languages) that must be detected, plus 50 comment/string decoys
+that must not be. Latest run: **100% recall, 100% mutation precision**
+([RESULTS-seeded.md](benchmark/RESULTS-seeded.md)), enforced by
+`tests/test_seeded.py`. Honest limits are documented in
+[benchmark/README.md](benchmark/README.md) — these are regression benchmarks, not
 a claim of perfection on arbitrary code.
 
 These charts are generated from **live scanner output** by
@@ -372,6 +383,8 @@ quantumsafe version
 | `--output` | Write to `.json`, `.cbom.json` (CycloneDX CBOM), `.html`, `.sarif`, or `.svg` (risk badge); terminal summary still printed |
 | `--exclude` | Glob of paths to skip (repeatable) |
 | `--taint` | Also run interprocedural data-flow analysis (Python): flag quantum-vulnerable crypto reached through wrapper functions, not just direct calls |
+| `--no-deps` | Skip dependency scanning (on by default): parses manifests **and lockfiles** (`requirements.txt`, `pyproject.toml`, `package.json`, `go.mod`, `pom.xml`, `Gemfile`, `package-lock.json`, `poetry.lock`, `Pipfile.lock`, `Gemfile.lock`, `yarn.lock`, `go.sum`) and flags known quantum-vulnerable crypto libraries (with purl + direct/transitive scope) in the CBOM |
+| `--no-rank` | Skip reachability ranking (on by default): labels each source finding `reachable` / `test-example` / `unreferenced` so exploitable findings sort above dead or example code |
 | `--fail-on-high` | Exit non-zero on any HIGH finding (CI gate) |
 | `--no-sync` | Don't upload the result to your linked dashboard |
 
@@ -575,9 +588,13 @@ Quantum-Safe/
 │   ├── benchmark.py      #   latency & sizes vs RSA / ML-KEM
 │   └── README.md
 ├── cli/                  # the `quantumsafe` package (CLI + shared engine)
-│   ├── scanner.py        #   AST + regex detection
+│   ├── scanner.py        #   AST + regex detection, cross-language usage-awareness
+│   ├── dependencies.py   #   dependency + lockfile crypto scanning (purl + CBOM)
+│   ├── reachability.py   #   reachability ranking (reachable/test/unreferenced)
+│   ├── taint.py          #   interprocedural data-flow (wrapper) analysis
 │   ├── scorer.py         #   risk score
-│   ├── recommender.py    #   NIST recommendations
+│   ├── recommender.py    #   NIST family-level recommendations
+│   ├── remediation.py    #   call-site-specific fixes (before/after)
 │   ├── reporter.py       #   terminal / JSON / HTML / SARIF / CBOM / SVG output
 │   └── cli.py            #   argparse entry point
 ├── backend/              # Flask REST API

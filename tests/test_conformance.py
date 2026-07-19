@@ -70,20 +70,28 @@ def test_cbom_conforms_to_cyclonedx_1_6(report):
     assert doc["components"], "expected at least one cryptographic-asset component"
 
     seen_refs = set()
+    crypto_assets = 0
     for c in doc["components"]:
-        assert c["type"] == "cryptographic-asset"
+        # A CBOM may mix cryptographic-asset (algorithms) and library
+        # (dependencies) components; both must carry a unique bom-ref.
+        assert c["type"] in ("cryptographic-asset", "library"), f"unexpected type {c['type']!r}"
         ref = c["bom-ref"]
         assert ref and ref not in seen_refs, f"duplicate/empty bom-ref {ref!r}"
         seen_refs.add(ref)
 
+        occurrences = c["evidence"]["occurrences"]
+        assert occurrences and all("location" in o for o in occurrences)
+
+        if c["type"] != "cryptographic-asset":
+            continue
+        crypto_assets += 1
         cp = c["cryptoProperties"]
         assert cp["assetType"] == "algorithm"
         primitive = cp["algorithmProperties"]["primitive"]
         assert primitive in _CDX_PRIMITIVES, f"invalid primitive {primitive!r}"
         assert cp["algorithmProperties"]["nistQuantumSecurityLevel"] in range(0, 7)
 
-        occurrences = c["evidence"]["occurrences"]
-        assert occurrences and all("location" in o for o in occurrences)
+    assert crypto_assets >= 1, "expected at least one cryptographic-asset component"
 
 
 def test_cbom_metadata_is_well_formed(report):

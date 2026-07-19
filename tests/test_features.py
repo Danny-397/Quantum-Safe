@@ -47,6 +47,34 @@ def test_cbom_output_is_valid(tmp_path):
     assert "cryptoProperties" in comp
 
 
+def test_cbom_includes_dependency_libraries(tmp_path):
+    # A project that only *depends on* crypto libraries (no first-party crypto in
+    # source) still yields a CBOM with library components carrying purls, plus a
+    # dependency graph linking each library to the crypto assets it provides.
+    _write(tmp_path, "requirements.txt", "cryptography==42.0.5\nrsa==4.9\n")
+    _write(tmp_path, "app.py", "def add(a, b):\n    return a + b\n")
+
+    report = build_report(scan_path(str(tmp_path), scan_deps=True), str(tmp_path))
+    cbom = json.loads(to_cbom(report))
+
+    libs = [c for c in cbom["components"] if c["type"] == "library"]
+    assert libs, "expected library components for dependencies"
+    names = {c["name"] for c in libs}
+    assert {"cryptography", "rsa"} <= names
+
+    crypto_lib = next(c for c in libs if c["name"] == "cryptography")
+    assert crypto_lib["purl"] == "pkg:pypi/cryptography@42.0.5"
+    assert crypto_lib["version"] == "42.0.5"
+
+    # The dependency graph links libraries to the crypto assets they provide.
+    assert cbom["dependencies"]
+    crypto_refs = {c["bom-ref"] for c in cbom["components"]
+                   if c["type"] == "cryptographic-asset"}
+    for dep in cbom["dependencies"]:
+        assert dep["provides"], "library should provide at least one crypto asset"
+        assert all(ref in crypto_refs for ref in dep["provides"])
+
+
 def test_badge_svg(tmp_path):
     _write(tmp_path, "c.py", "import hashlib\nh = hashlib.md5(b'x')\n")
     report = build_report(scan_path(str(tmp_path)), str(tmp_path))

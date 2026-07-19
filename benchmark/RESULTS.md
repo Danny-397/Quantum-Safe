@@ -22,25 +22,28 @@ detects `D`:
   much was caught.
 - **F1** = harmonic mean of precision and recall (a single combined figure).
 
-The corpus (**15 files, 9 languages, 26 labeled findings**) includes adversarial
-**decoys**: crypto names inside comments, docstrings, log messages, and exception
-strings, plus word-boundary traps (`md5sumLabel`, `rc4legacyName`, `dsaCount`).
-`evaluate.py` runs the scanner **twice** — once as a naive line-level regex, once
-with QuantumSafe's string/comment-aware pass — so the effect is measured, not
-asserted:
+The corpus (**18 files, 9 languages, 26 labeled findings**) includes adversarial
+**decoys**: crypto names inside comments, docstrings, log messages, exception
+strings, trailing and multi-line block comments, plus word-boundary traps
+(`md5sumLabel`, `rc4legacyName`, `dsaCount`). `evaluate.py` runs the scanner
+**twice** — once as a naive line-level regex, once with QuantumSafe's usage-aware
+pass — so the effect is measured, not asserted:
 
 | Configuration | TP | FP | FN | Precision | Recall | F1 |
 |---|--:|--:|--:|--:|--:|--:|
-| Naive line-regex baseline | 26 | 14 | 0 | 65.0% | 100% | 78.8% |
+| Naive line-regex baseline | 26 | 27 | 0 | 49.1% | 100% | 65.8% |
 | **QuantumSafe (usage-aware)** | **26** | **0** | **0** | **100%** | **100%** | **100%** |
 
-The usage-aware pass removes **14 false positives** — every one a keyword mention
-inside a Python docstring, log string, or exception message — **without losing a
-single true positive**, so recall stays 100%. The `positive/mixed.py` case is the
-clearest: real `dsa.generate_private_key(...)` and `hashlib.sha1(...)` usage is
-still caught, while the `RSA`/`MD5` that appear only in its docstring and a log
-string are correctly ignored. Comment-only mentions and word-boundary traps are
-handled by the comment filter and anchored patterns as before.
+The usage-aware pass removes **27 false positives** — crypto keywords inside
+docstrings, log/exception strings, trailing comments, and block comments —
+**without losing a single true positive**, so recall stays 100%. The win now
+spans every language: 13 of the 27 removed come from the Java, JavaScript, and Go
+decoys (`negative/notes.java`, `messages.js`, `notes.go`). Genuine string-argument
+usages such as Java's `getInstance("SHA-1")` and Node's
+`createCipheriv("aes-128-gcm", …)` survive via the string-argument recovery pass,
+while `positive/mixed.py` still shows the Python case — real
+`dsa.generate_private_key(...)` and `hashlib.sha1(...)` caught, docstring/log
+`RSA`/`MD5` ignored.
 
 ---
 
@@ -112,7 +115,7 @@ dependency-light.
 ## Honest framing
 
 This is a **regression benchmark**, not a large-scale field study. 100% on 26
-findings across 15 files demonstrates the approach and guards against regressions;
+findings across 18 files demonstrates the approach and guards against regressions;
 it is **not** a claim of perfect accuracy on arbitrary code. The point of the
 naive-vs-improved comparison is to quantify a specific, real improvement (string /
 comment awareness) honestly — including that the naive approach's recall is already
